@@ -53,8 +53,8 @@ GenotypeData FileInput::VcfToSparseTensor(const string &file_path) {
   }
 
   string next_line = "";
-  vector<torch::Tensor> homo_snps;
-  vector<torch::Tensor> hetero_snps;
+  vector<vector<int>> homo_snps;
+  vector<vector<int>> hetero_snps;
   int item_index = 0;
 
   while (getline(vcf_file, next_line)) {
@@ -73,16 +73,12 @@ GenotypeData FileInput::VcfToSparseTensor(const string &file_path) {
           hetero_inds.push_back(item_index - num_empty_fields - 1);
         }
       }
-      torch::Tensor homo_inds_tensor =
-          torch::from_blob(homo_inds.data(), {1, (int)homo_inds.size()},
-                           torch::TensorOptions().dtype(torch::kInt32))
-              .to(torch::kInt64);
-      homo_snps.push_back(homo_inds_tensor);
+      homo_snps.push_back(homo_inds);
       torch::Tensor hetero_inds_tensor =
-          torch::from_blob(hetero_inds.data(), {1, (int)hetero_inds.size()},
+          torch::from_blob(hetero_inds.data(), {(int)hetero_inds.size()},
                            torch::TensorOptions().dtype(torch::kInt32))
               .to(torch::kInt64);
-      hetero_snps.push_back(hetero_inds_tensor);
+      hetero_snps.push_back(hetero_inds);
     }
   }
   return GenotypeData(num_snps, num_individuals, homo_snps, hetero_snps);
