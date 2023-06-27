@@ -4,6 +4,7 @@
 #include <string>
 #include <torch/torch.h>
 #include <vector>
+#include "genotype_data.hpp"
 
 namespace fileinput {
 
@@ -30,6 +31,8 @@ public:
   void PreProcess(const std::string &file_path);
 
   torch::Tensor VcfToDenseTensor(const std::string &file_path);
+
+  GenotypeData VcfToSparseTensor(const std::string &file_path);
 };
 
 } // namespace fileinput

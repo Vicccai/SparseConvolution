@@ -43,10 +43,53 @@ void FileInput::PreProcess(const string &file_path) {
   }
 }
 
-torch::Tensor FileInput::VcfToDenseTensor(const string &file_path) {
-
+GenotypeData FileInput::VcfToSparseTensor(const string &file_path) {
   PreProcess(file_path);
+  ifstream vcf_file(file_path);
 
+  if (!vcf_file.is_open()) {
+    std::cout << "Could not open file: " << file_path << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  string next_line = "";
+  vector<torch::Tensor> homo_snps;
+  vector<torch::Tensor> hetero_snps;
+  int item_index = 0;
+
+  while (getline(vcf_file, next_line)) {
+    if (next_line.at(0) != '#') {
+      num_snps++;
+      stringstream buffer(next_line);
+      string item = "";
+      vector<int> homo_inds;
+      vector<int> hetero_inds;
+      while (getline(buffer, item, '\t')) {
+        if (item_index++ < num_empty_fields)
+          continue;
+        if (item == "1|1") {
+          homo_inds.push_back(item_index - num_empty_fields - 1);
+        } else if (item == "0|1" || item == "1|0") {
+          hetero_inds.push_back(item_index - num_empty_fields - 1);
+        }
+      }
+      torch::Tensor homo_inds_tensor =
+          torch::from_blob(homo_inds.data(), {1, (int)homo_inds.size()},
+                           torch::TensorOptions().dtype(torch::kInt32))
+              .to(torch::kInt64);
+      homo_snps.push_back(homo_inds_tensor);
+      torch::Tensor hetero_inds_tensor =
+          torch::from_blob(hetero_inds.data(), {1, (int)hetero_inds.size()},
+                           torch::TensorOptions().dtype(torch::kInt32))
+              .to(torch::kInt64);
+      hetero_snps.push_back(hetero_inds_tensor);
+    }
+  }
+  return GenotypeData(num_snps, num_individuals, homo_snps, hetero_snps);
+}
+
+torch::Tensor FileInput::VcfToDenseTensor(const string &file_path) {
+  PreProcess(file_path);
   ifstream vcf_file(file_path);
 
   if (!vcf_file.is_open()) {
@@ -64,8 +107,7 @@ torch::Tensor FileInput::VcfToDenseTensor(const string &file_path) {
       stringstream buffer(next_line);
       string item = "";
       while (getline(buffer, item, '\t')) {
-        item_index++;
-        if (item_index <= num_empty_fields)
+        if (item_index++ < num_empty_fields)
           continue;
         if (item == "1|1") {
           snps.push_back(2);
@@ -81,8 +123,7 @@ torch::Tensor FileInput::VcfToDenseTensor(const string &file_path) {
   vcf_file.close();
   torch::Tensor genotype_matrix =
       torch::from_blob(snps.data(), {num_snps, num_individuals},
-                       torch::TensorOptions().dtype(torch::kInt32))
-          .to(torch::kInt64);
+                       torch::TensorOptions().dtype(torch::kInt32));
   return genotype_matrix;
 }
 } // namespace fileinput
