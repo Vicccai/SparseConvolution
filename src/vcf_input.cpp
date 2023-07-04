@@ -55,7 +55,6 @@ GenotypeData FileInput::VcfToSparseTensor(const string &file_path) {
   string next_line = "";
   vector<vector<int>> homo_snps;
   vector<vector<int>> hetero_snps;
-  int item_index = 0;
 
   while (getline(vcf_file, next_line)) {
     if (next_line.at(0) != '#') {
@@ -64,6 +63,7 @@ GenotypeData FileInput::VcfToSparseTensor(const string &file_path) {
       string item = "";
       vector<int> homo_inds;
       vector<int> hetero_inds;
+      int item_index = 0;
       while (getline(buffer, item, '\t')) {
         if (item_index++ < num_empty_fields)
           continue;
@@ -95,13 +95,13 @@ torch::Tensor FileInput::VcfToDenseTensor(const string &file_path) {
 
   string next_line = "";
   vector<int> snps;
-  int item_index = 0;
 
   while (getline(vcf_file, next_line)) {
     if (next_line.at(0) != '#') {
       num_snps++;
       stringstream buffer(next_line);
       string item = "";
+      int item_index = 0;
       while (getline(buffer, item, '\t')) {
         if (item_index++ < num_empty_fields)
           continue;
@@ -115,11 +115,66 @@ torch::Tensor FileInput::VcfToDenseTensor(const string &file_path) {
       }
     }
   }
-
   vcf_file.close();
   torch::Tensor genotype_matrix =
       torch::from_blob(snps.data(), {num_snps, num_individuals},
                        torch::TensorOptions().dtype(torch::kInt32));
   return genotype_matrix;
+}
+
+void FileInput::GetIndividualStrings(const string &file_path,
+                                     const int &individual,
+                                     vector<vector<int>> &homo_snps,
+                                     vector<vector<int>> &hetero_snps,
+                                     const bool &count_snps) {
+  ifstream vcf_file(file_path);
+
+  if (!vcf_file.is_open()) {
+    std::cout << "Could not open file: " << file_path << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  string next_line = "";
+
+  vector<int> homo_inds;
+  vector<int> hetero_inds;
+  int item_index = 0;
+  while (getline(vcf_file, next_line)) {
+    if (next_line.at(0) != '#') {
+      if (count_snps) {
+        num_snps++;
+      }
+      stringstream buffer(next_line);
+      string item = "";
+      bool count_fields = true;
+      int start_index = 0;
+      for (int i = 0; i < num_empty_fields; i++) {
+        getline(buffer, item, '\t');
+        start_index += item.length() + 1;
+      }
+      int ind_index = start_index + 4 * individual;
+      item = next_line.substr(ind_index, 3);
+      if (item == "1|1") {
+        homo_inds.push_back(item_index);
+      } else if (item == "0|1" || item == "1|0") {
+        hetero_inds.push_back(item_index);
+      }
+      item_index++;
+    }
+  }
+  homo_snps.push_back(homo_inds);
+  hetero_snps.push_back(hetero_inds);
+}
+
+GenotypeData FileInput::VcfToSparseTensorIndividuals(const string &file_path) {
+  PreProcess(file_path);
+  vector<vector<int>> homo_snps;
+  vector<vector<int>> hetero_snps;
+  bool count_snps = true;
+  for (int i = 0; i < num_individuals; i++) {
+    GetIndividualStrings(file_path, i, homo_snps, hetero_snps, count_snps);
+    count_snps = false;
+  }
+  return GenotypeData(num_snps, num_individuals, homo_snps, hetero_snps);
 }
 } // namespace fileinput

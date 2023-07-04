@@ -9,3 +9,5 @@ target_link_libraries(SparseConvolution "${TORCH_LIBRARIES}")
 set_property(TARGET SparseConvolution PROPERTY CXX_STANDARD 17)
 
 set(CMAKE_BUILD_TYPE Debug)
+
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
