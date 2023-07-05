@@ -15,10 +15,12 @@ private:
   int num_snps;
   int num_empty_fields;
   void PreProcess(const std::string &file_path);
-  void GetIndividualStrings(const std::string &file_path,
-                            const int &num_individuals,
-                            vector<vector<int>> &homo_snps,
-                            vector<vector<int>> &hetero_snps, const bool &count_snps);
+  void GetIndividuals(const std::string &file_path, const int &num_individuals,
+                      vector<vector<int>> &homo_snps,
+                      vector<vector<int>> &hetero_snps, const bool &count_snps);
+  void GetIndividualStrings(const std::string &file_path, const int &individual,
+                            std::ofstream &genotype_data);
+  void PreProcessTxt(const std::string &file_path);
 
 public:
   /**
@@ -37,6 +39,8 @@ public:
 
   GenotypeData VcfToSparseTensor(const std::string &file_path);
   GenotypeData VcfToSparseTensorIndividuals(const std::string &file_path);
+  void VcfConvert(const std::string &file_path, const std::string &output_path);
+  GenotypeData TxtToSparseTensor(const std::string &file_path);
 };
 
 } // namespace fileinput
