@@ -39,8 +39,13 @@ int main() {
   // }
   // std::cout << b << std::endl;
   // test::test_dense_tensor();
-  test::test_sparse_2();
-  test::test_sparse_3();
+  // test::test_sparse_2();
+  // test::test_sparse_3();
+  // test::test_sparse_4();
+  // test::test_sparse_5();
+  // test::test_sparse_6();
+  test::test_sparse_7();
+  test::test_sparse_8();
   // test_loop();
   // torch::Tensor dense_result = test_dense_tensor()[0][0];
   // torch::Tensor sparse_result = test_sparse_tensor();

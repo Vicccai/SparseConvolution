@@ -112,6 +112,50 @@ void test_sparse_2() {
             << std::endl;
 }
 
+void test_sparse_4() {
+  FileInput input = FileInput();
+  GenotypeData data = input.VcfToSparseTensor("../data/cleaned_test.vcf");
+  // vector<vector<int>> weight{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
+  vector<int> weight{1, 2, 3, 4};
+
+  auto start = steady_clock::now();
+  vector<vector<int>> result =
+      sparse_convolution_4(data.homo_snps, data.hetero_snps, data.num_snps,
+                           data.num_individuals, weight);
+  auto end = steady_clock::now();
+  std::cout << "Time 4: " << duration_cast<milliseconds>(end - start).count()
+            << std::endl;
+}
+
+void test_sparse_5() {
+  FileInput input = FileInput();
+  GenotypeData data = input.VcfToSparseTensor("../data/cleaned_test.vcf");
+  // vector<vector<int>> weight{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
+  vector<int> weight{1, 2, 3, 4};
+
+  auto start = steady_clock::now();
+  vector<int> result =
+      sparse_convolution_5(data.homo_snps, data.hetero_snps, data.num_snps,
+                           data.num_individuals, weight);
+  auto end = steady_clock::now();
+  std::cout << "Time 5: " << duration_cast<milliseconds>(end - start).count()
+            << std::endl;
+}
+
+void test_sparse_6() {
+  FileInput input = FileInput();
+  GenotypeData data = input.VcfToSparseTensor("../data/cleaned_test.vcf");
+  vector<vector<int>> weight{{1, 2}, {3, 4}};
+
+  auto start = steady_clock::now();
+  vector<int> result =
+      sparse_convolution_6(data.homo_snps, data.hetero_snps, data.num_snps,
+                           data.num_individuals, weight);
+  auto end = steady_clock::now();
+  std::cout << "Time 6: " << duration_cast<milliseconds>(end - start).count()
+            << std::endl;
+}
+
 void test_sparse_3() {
   FileInput input = FileInput();
   GenotypeData data = input.TxtToSparseTensor("../data/genotype_data.txt");
@@ -126,6 +170,37 @@ void test_sparse_3() {
                            data.num_individuals, weight);
   auto end = steady_clock::now();
   std::cout << "Time 3: " << duration_cast<milliseconds>(end - start).count()
+            << std::endl;
+}
+
+void test_sparse_7() {
+  FileInput input = FileInput();
+  GenotypeData data = input.TxtToSparseTensor("../data/genotype_data.txt");
+  // GenotypeData data =
+  //     input.VcfToSparseTensorIndividuals("../data/cleaned_test.vcf");
+  // vector<vector<int>> weight{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
+  vector<vector<int>> weight{{1, 2}, {3, 4}};
+
+  auto start = steady_clock::now();
+  vector<int> result3 =
+      sparse_convolution_7(data.homo_snps, data.hetero_snps, data.num_snps,
+                           data.num_individuals, weight);
+  auto end = steady_clock::now();
+  std::cout << "Time 7: " << duration_cast<milliseconds>(end - start).count()
+            << std::endl;
+}
+
+void test_sparse_8() {
+  FileInput input = FileInput();
+  GenotypeData data = input.TxtToSparseTensor("../data/genotype_data.txt");
+  vector<vector<int>> weight{{1, 2}, {3, 4}};
+
+  auto start = steady_clock::now();
+  vector<vector<int>> result3 =
+      sparse_convolution_8(data.homo_snps, data.hetero_snps, data.num_snps,
+                           data.num_individuals, weight);
+  auto end = steady_clock::now();
+  std::cout << "Time 8: " << duration_cast<milliseconds>(end - start).count()
             << std::endl;
 }
 
