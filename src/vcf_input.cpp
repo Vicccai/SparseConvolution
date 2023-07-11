@@ -15,6 +15,9 @@ FileInput::FileInput() {
 }
 
 void FileInput::PreProcess(const string &file_path) {
+  num_individuals = 0;
+  num_snps = 0;
+  num_empty_fields = 0;
   ifstream vcf_file(file_path);
 
   if (!vcf_file.is_open()) {
@@ -120,6 +123,43 @@ torch::Tensor FileInput::VcfToDenseTensor(const string &file_path) {
       torch::from_blob(snps.data(), {num_snps, num_individuals},
                        torch::TensorOptions().dtype(torch::kInt32));
   return genotype_matrix;
+}
+
+vector<vector<int>> FileInput::VcfToDenseVector(const string &file_path) {
+  PreProcess(file_path);
+  ifstream vcf_file(file_path);
+
+  if (!vcf_file.is_open()) {
+    std::cout << "Could not open file: " << file_path << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  string next_line = "";
+  vector<vector<int>> snps;
+
+  while (getline(vcf_file, next_line)) {
+    if (next_line.at(0) != '#') {
+      num_snps++;
+      stringstream buffer(next_line);
+      string item = "";
+      int item_index = 0;
+      vector<int> snp;
+      while (getline(buffer, item, '\t')) {
+        if (item_index++ < num_empty_fields)
+          continue;
+        if (item == "1|1") {
+          snp.push_back(2);
+        } else if (item == "0|1" || item == "1|0") {
+          snp.push_back(1);
+        } else {
+          snp.push_back(0);
+        }
+      }
+      snps.push_back(snp);
+    }
+  }
+  vcf_file.close();
+  return snps;
 }
 
 void FileInput::GetIndividuals(const string &file_path, const int &individual,

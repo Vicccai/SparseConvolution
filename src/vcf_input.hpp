@@ -41,6 +41,7 @@ public:
   GenotypeData VcfToSparseTensorIndividuals(const std::string &file_path);
   void VcfConvert(const std::string &file_path, const std::string &output_path);
   GenotypeData TxtToSparseTensor(const std::string &file_path);
+  vector<vector<int>> VcfToDenseVector(const std::string &file_path);
 };
 
 } // namespace fileinput
