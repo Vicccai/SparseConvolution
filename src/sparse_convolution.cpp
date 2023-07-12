@@ -182,7 +182,7 @@ vector<int> sparse_convolution_1d(
 }
 
 // colwise long vector, 2d weight, 1d result, used to be 7
-vector<int> sparse_convolution_1d_colwise(
+torch::Tensor sparse_convolution_1d_colwise(
     const vector<vector<int>> &homo_snps,
     const vector<vector<int>> &hetero_snps, const int &num_snps,
     const int &num_individuals, const vector<vector<int>> &weight,
@@ -235,7 +235,12 @@ vector<int> sparse_convolution_1d_colwise(
           num_individuals, result_row_size, result_col_size, weight, result);
     }
   }
-  return result;
+  torch::Tensor torch_result =
+      torch::from_blob(result.data(), {result_col_size, result_row_size},
+                       torch::TensorOptions().dtype(torch::kInt32))
+          .to(torch::kInt64)
+          .transpose(0, 1);
+  return torch_result;
 }
 
 int handle_element(const int &i, const int &j, const int &stride,
@@ -304,7 +309,7 @@ int handle_element(const int &i, const int &j, const int &stride,
 
 // updated version, more tuned for long filters. assume weight is colwise as
 // well test if stride is greater than window size?
-vector<int> sparse_convolution(
+torch::Tensor sparse_convolution(
     const vector<vector<int>> &homo_snps,
     const vector<vector<int>> &hetero_snps, const int &num_snps,
     const int &num_individuals, const vector<vector<int>> &weight,
@@ -336,7 +341,7 @@ vector<int> sparse_convolution(
   // i and j are result indices, a and b are filter indices, row and col are
   // input indices
   for (int j = 0; j < result_col_size; j++) {
-    std::cout << "j: " << j << std::endl;
+    // std::cout << "j: " << j << std::endl;
     vector<int> starting_indices_homo(k_row, 0);
     vector<int> starting_indices_hetero(k_row, 0);
     for (int i = 0; i < result_row_size; i++) {
@@ -347,5 +352,10 @@ vector<int> sparse_convolution(
       result[j * result_row_size + i] += sum;
     }
   }
-  return result;
+  torch::Tensor torch_result =
+      torch::from_blob(result.data(), {result_col_size, result_row_size},
+                       torch::TensorOptions().dtype(torch::kInt32))
+          .to(torch::kInt64)
+          .transpose(0, 1);
+  return torch_result;
 }

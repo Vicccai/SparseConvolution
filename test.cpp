@@ -10,35 +10,30 @@ using namespace torch::indexing;
 
 namespace test {
 
-torch::Tensor test_dense_conv() {
+torch::Tensor test_naive_dense(const int &kernel_length) {
   FileInput input = FileInput();
   vector<vector<int>> data = input.VcfToDenseVector("../data/cleaned_test.vcf");
-  vector<vector<int>> weight(1000, vector<int>(2, 2));
+  vector<vector<int>> weight(kernel_length, vector<int>(2, 2));
   auto start = steady_clock::now();
-  vector<int> result = dense_convolution(data, weight);
+  torch::Tensor result = dense_convolution(data, weight);
   auto end = steady_clock::now();
   std::cout << "Time for naive dense: "
             << duration_cast<milliseconds>(end - start).count() << std::endl;
-  torch::Tensor torch_result =
-      torch::from_blob(result.data(), {62664, 49},
-                       torch::TensorOptions().dtype(torch::kInt32))
-          .to(torch::kInt64);
-  return torch_result;
+  return result;
 }
 
-torch::Tensor test_dense_tensor() {
+torch::Tensor test_torch_dense(const int &kernel_length) {
   FileInput input = FileInput();
   torch::Tensor data = input.VcfToDenseTensor("../data/cleaned_test.vcf");
   torch::Tensor data_reshape =
       data.reshape({1, 1, data.sizes().at(0), data.sizes().at(1)});
-  // torch::Tensor weight = torch::tensor({1, 2, 3, 4});
-  torch::Tensor weight = 2 * torch::ones({1000, 2});
+  torch::Tensor weight = 2 * torch::ones({kernel_length, 2});
   torch::Tensor weight_reshaped =
-      weight.reshape({1, 1, 1000, 2}).to(torch::kInt32);
+      weight.reshape({1, 1, kernel_length, 2}).to(torch::kInt32);
   auto start = steady_clock::now();
   torch::Tensor result = F::conv2d(data_reshape, weight_reshaped);
   auto end = steady_clock::now();
-  std::cout << "Time for dense: "
+  std::cout << "Time for torch dense: "
             << duration_cast<milliseconds>(end - start).count() << std::endl;
   return result;
 }
@@ -121,18 +116,17 @@ void test_sparse_1d() {
             << std::endl;
 }
 
-vector<int> test_sparse_1d_colwise() {
+torch::Tensor test_sparse_1d_colwise(const int &kernel_length) {
   FileInput input = FileInput();
   GenotypeData data = input.TxtToSparseTensor("../data/genotype_data.txt");
-  // vector<vector<int>> weight{{1, 2}, {3, 4}};
-  vector<vector<int>> weight(1000, vector<int>(2, 2));
+  vector<vector<int>> weight(kernel_length, vector<int>(2, 2));
   auto start = steady_clock::now();
-  vector<int> result = sparse_convolution_1d_colwise(
+  torch::Tensor result = sparse_convolution_1d_colwise(
       data.homo_snps, data.hetero_snps, data.num_snps, data.num_individuals,
       weight);
   auto end = steady_clock::now();
-  std::cout << "Time 7: " << duration_cast<milliseconds>(end - start).count()
-            << std::endl;
+  std::cout << "Time for Sparse 1: "
+            << duration_cast<milliseconds>(end - start).count() << std::endl;
   return result;
 }
 
@@ -157,40 +151,36 @@ void test_loop() {
             << duration_cast<milliseconds>(end - start).count() << std::endl;
 }
 
-vector<int> test_sparse_convolution() {
+torch::Tensor test_sparse_convolution(const int &kernel_length) {
   FileInput input = FileInput();
   GenotypeData data = input.TxtToSparseTensor("../data/genotype_data.txt");
-  // vector<vector<int>> weight{{1, 2}, {3, 4}};
-  vector<vector<int>> weight(2, vector<int>(1000, 2));
+  vector<vector<int>> weight(2, vector<int>(kernel_length, 2));
   auto start = steady_clock::now();
-  vector<int> result =
+  torch::Tensor result =
       sparse_convolution(data.homo_snps, data.hetero_snps, data.num_snps,
                          data.num_individuals, weight);
   auto end = steady_clock::now();
-  std::cout << "Time: " << duration_cast<milliseconds>(end - start).count()
-            << std::endl;
+  std::cout << "Time for Sparse 2: "
+            << duration_cast<milliseconds>(end - start).count() << std::endl;
   return result;
 }
 
 void test_same() {
-  // vector<int> sparse_result = test::test_sparse_1d_colwise();
-  vector<int> sparse_result = test::test_sparse_convolution();
-  torch::Tensor torch_result =
-      torch::from_blob(sparse_result.data(), {49, 62664},
-                       torch::TensorOptions().dtype(torch::kInt32))
-          .to(torch::kInt64)
-          .transpose(0, 1);
-  vector<int> result = compare::TextToResult("../data/result.txt");
-  // std::cout << result.size() << std::endl;
-  torch::Tensor torch_result2 =
-      torch::from_blob(result.data(), {49, 62664},
-                       torch::TensorOptions().dtype(torch::kInt32))
-          .to(torch::kInt64)
-          .transpose(0, 1);
-  std::cout << torch_result.index({Slice(0, 1)}) << std::endl;
-  // torch::Tensor dense_result = test::test_dense_conv();
-  std::cout << torch_result2.index({Slice(0, 1)}) << std::endl;
-  std::cout << torch::equal(torch_result, torch_result2) << std::endl;
+  torch::Tensor sparse_result = test::test_sparse_1d_colwise(1000);
+  torch::Tensor sparse_result_2 = test::test_sparse_convolution(1000);
+  torch::Tensor dense_result = test::test_naive_dense(1000);
+
+  // vector<int> result = compare::TextToResult("../data/result.txt");
+  // // std::cout << result.size() << std::endl;
+  // torch::Tensor torch_result2 =
+  //     torch::from_blob(result.data(), {49, 62664},
+  //                      torch::TensorOptions().dtype(torch::kInt32))
+  //         .to(torch::kInt64)
+  //         .transpose(0, 1);
+  // std::cout << torch_result.index({Slice(0, 1)}) << std::endl;
+  // // torch::Tensor dense_result = test::test_dense_conv();
+  // std::cout << torch_result2.index({Slice(0, 1)}) << std::endl;
+  // std::cout << torch::equal(torch_result, torch_result2) << std::endl;
 
   // vector<int> result_new = test::test_sparse_7();
   // torch::Tensor t_new =
@@ -198,7 +188,8 @@ void test_same() {
   //                      torch::TensorOptions().dtype(torch::kInt32))
   //         .to(torch::kInt64)
   //         .transpose(0, 1);
-  // std::cout << torch::equal(t_file, t_new) << std::endl;
+  std::cout << torch::equal(sparse_result, sparse_result_2) << std::endl;
+  std::cout << torch::equal(sparse_result, dense_result) << std::endl;
 }
 
 void test_conv2d() {

@@ -2,7 +2,7 @@
 
 using std::vector;
 
-vector<int> dense_convolution(const vector<vector<int>> &data,
+torch::Tensor dense_convolution(const vector<vector<int>> &data,
                               const vector<vector<int>> &weight,
                               const int &bias = 0, const int &stride = 1,
                               const int &dilation = 1) {
@@ -25,5 +25,9 @@ vector<int> dense_convolution(const vector<vector<int>> &data,
       }
     }
   }
-  return result;
+  torch::Tensor torch_result =
+      torch::from_blob(result.data(), {result_row_size, result_col_size},
+                       torch::TensorOptions().dtype(torch::kInt32))
+          .to(torch::kInt64);
+  return torch_result;
 }

@@ -9,7 +9,26 @@ using namespace std::chrono;
 using std::vector;
 namespace F = torch::nn::functional;
 
+void benchmark() {
+  vector<int> sizes = {100, 1000, 10000};
+  for (int size : sizes) {
+    std::cout << "Size: " << size << std::endl;
+    for (int i = 0; i < 3; i++) {
+      std::cout << "Run: " << (i + 1) << std::endl;
+      // naive dense
+      test::test_naive_dense(size);
+      // torch dense
+      test::test_torch_dense(size);
+      // sparse 1
+      test::test_sparse_1d_colwise(size);
+      // sparse 2
+      test::test_sparse_convolution(size);
+    }
+  }
+}
+
 int main() {
+  // benchmark();
   // test::test_conv2d();
   test::test_same();
   // vector<int> dense_result =
