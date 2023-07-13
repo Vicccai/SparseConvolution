@@ -23,9 +23,9 @@ void benchmark() {
       // torch dense
       test::test_torch_dense(size, stride, dilation);
       // sparse 1
-      test::test_sparse_1d_colwise(size, stride, dilation);
+      test::test_sparse_input_based(size, stride, dilation);
       // sparse 2
-      test::test_sparse_convolution(size, stride, dilation);
+      test::test_sparse_result_based(size, stride, dilation);
     }
   }
 }
