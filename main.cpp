@@ -1,4 +1,5 @@
 #include "src/compare_result.cpp"
+#include "src/generate_data.cpp"
 #include "test.cpp"
 #include <chrono>
 #include <iostream>
@@ -10,76 +11,47 @@ using std::vector;
 namespace F = torch::nn::functional;
 
 void benchmark() {
-  vector<int> sizes = {100, 1000, 10000};
+  int stride = 1;
+  int dilation = 1;
+  vector<int> sizes = {2, 5, 10, 20, 50, 100};
   for (int size : sizes) {
     std::cout << "Size: " << size << std::endl;
     for (int i = 0; i < 3; i++) {
       std::cout << "Run: " << (i + 1) << std::endl;
       // naive dense
-      test::test_naive_dense(size);
+      test::test_naive_dense(size, stride, dilation);
       // torch dense
-      test::test_torch_dense(size);
+      test::test_torch_dense(size, stride, dilation);
       // sparse 1
-      test::test_sparse_1d_colwise(size);
+      test::test_sparse_1d_colwise(size, stride, dilation);
       // sparse 2
-      test::test_sparse_convolution(size);
+      test::test_sparse_convolution(size, stride, dilation);
     }
   }
 }
 
 int main() {
+  vector<double> densities = {0.01, 0.05, 0.1, 0.2};
+  vector<string> density_strings = {"0.01", "0.05", "0.1", "0.2"};
+  for (int i = 0; i < densities.size(); i++) {
+    vector<vector<int>> data = generate::generate_data(densities[i], 63663, 50);
+    string output_path = "../data/data_" + density_strings[i] + ".txt";
+    generate::write_data_to_file(data, output_path);
+    vector<vector<int>> data_trans = generate::transpose_data(data);
+    output_path = "../data/data_trans_" + density_strings[i] + ".txt";
+    generate::write_data_to_file(data_trans, output_path);
+  }
+  // std::cout << test::get_density() << std::endl;
+  // torch::Tensor test = torch::ones({3, 4}).to(torch::kInt32);
+  // std::vector<int> v(test.data_ptr<int>(), test.data_ptr<int>() +
+  // test.numel()); std::cout << v << std::endl;
   // benchmark();
+  // test::test_torch_dense(2000, 1, 1);
   // test::test_conv2d();
-  test::test_same();
-  // vector<int> dense_result =
-  // compare::TextToResult("../data/dense_result.txt"); std::cout <<
-  // dense_result.size() << std::endl; torch::Tensor t_new =
-  //     torch::from_blob(dense_result.data(), {62664, 49},
-  //                      torch::TensorOptions().dtype(torch::kInt32))
-  //         .to(torch::kInt64);
-  // torch::Tensor result = test::test_dense_tensor()[0][0];
-  // std::cout << torch::equal(t_new, result) << std::endl;
-  // std::cout << t_new.index({Slice(0, 1), Slice()}) << std::endl;
-  // std::cout << result.index({Slice(0, 1), Slice()}) << std::endl;
-  // compare::TensorToText(result);
-  // torch::Tensor matrix = result.index({Slice(0, 10), Slice(0, 1)});
-  // std::cout << matrix << std::endl;
-  // std::cout << result.index({Slice(0, 1)}) << std::endl;
-  // std::cout << result.index({Slice(0, 1), Slice()}) << std::endl;
-  // std::cout << result.sizes() << std::endl;
-  // test::test_sparse_2();
-  // test::test_sparse_3();
-  // test::test_sparse_4();
-  // test::test_sparse_5();
-  // test::test_sparse_6();
-  // vector<int> result3 = test::test_sparse_7();
-  // std::cout << result3.size() << std::endl;
-  // torch::Tensor t =
-  //     torch::from_blob(result3.data(), {49, 62664},
-  //                      torch::TensorOptions().dtype(torch::kInt32))
-  //         .to(torch::kInt64);
-  // torch::Tensor t_trans = t.transpose(0, 1);
-  // std::cout << t_trans.sizes() << std::endl;
-  // vector<vector<int>> result2 = test::test_sparse_8();
-  // std::cout << result2.size() << std::endl;
-  // std::cout << result2.at(0).size() << std::endl;
-  // int equal = 0;
-  // int notEqual = 0;
-  // for (int i = 0; i < 62664; i++) {
-  //   torch::Tensor result3 = result1.index({Slice(i, i + 1)});
-  //   torch::Tensor result4 = result2.index({Slice(i, i + 1)});
-  //   if (!torch::equal(result3, result4)) {
-  //     std::cout << i << std::endl;
-  //     std::cout << result3 << std::endl;
-  //     std::cout << result4 << std::endl;
-  //     break;
-  //   }
-  // }
-  // std::cout << equal << std::endl;
-  // std::cout << notEqual << std::endl;
-  // torch::Tensor result1 = result.index({Slice(62663, 62664)});
-  // std::cout << result1 << std::endl;
-  // std::cout << torch::equal(result, t_trans) << std::endl;
+  // test::test_same(1000, 5, 2);
+  // test::test_same(100, 1, 1);
+  // test::test_same(100, 1, 2);
+  // test::test_same(100, 150, 1);
 
   return 0;
 }

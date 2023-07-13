@@ -3,9 +3,9 @@
 using std::vector;
 
 torch::Tensor dense_convolution(const vector<vector<int>> &data,
-                              const vector<vector<int>> &weight,
-                              const int &bias = 0, const int &stride = 1,
-                              const int &dilation = 1) {
+                                const vector<vector<int>> &weight,
+                                const int &stride = 1, const int &dilation = 1,
+                                const int &bias = 0) {
   int num_snps = data.size();
   int num_individuals = data.at(0).size();
   int k_row = weight.size();

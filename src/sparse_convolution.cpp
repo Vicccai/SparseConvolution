@@ -47,8 +47,12 @@ void handle_row_1d_result_colwise(
         break;
       if (c % dilation != 0 || result_col >= result_col_size)
         continue;
-      result[result_col * result_row_size + result_row] += weight[r][c];
-      // result[result_row * result_col_size + result_col] += weight[r][c];
+      // std::cout << "r: " << r << std::endl;
+      // std::cout << "c: " << c << std::endl;
+      // std::cout << "result_row: " << result_row << std::endl;
+      // std::cout << "result_col: " << result_col << std::endl;
+      result[result_col * result_row_size + result_row] +=
+          weight[r / dilation][c / dilation];
     }
   }
 }
@@ -81,8 +85,8 @@ vector<vector<int>> sparse_convolution_2d(
     const vector<vector<int>> &homo_snps,
     const vector<vector<int>> &hetero_snps, const int &num_snps,
     const int &num_individuals, const vector<vector<int>> &weight,
-    const std::tuple<int, int> &output_size = std::make_tuple(0, 0),
-    const int &bias = 0, const int &stride = 1, const int &dilation = 1) {
+    const int &stride = 1, const int &dilation = 1, const int &bias = 0,
+    const std::tuple<int, int> &output_size = std::make_tuple(0, 0)) {
   int k = weight.size();
   int kernel_size = (k - 1) * dilation + 1;
   vector<vector<int>> double_weight(k, vector<int>(k, 0));
@@ -134,8 +138,8 @@ vector<int> sparse_convolution_1d(
     const vector<vector<int>> &homo_snps,
     const vector<vector<int>> &hetero_snps, const int &num_snps,
     const int &num_individuals, const vector<vector<int>> &weight,
-    const std::tuple<int, int> &output_size = std::make_tuple(0, 0),
-    const int &bias = 0, const int &stride = 1, const int &dilation = 1) {
+    const int &stride = 1, const int &dilation = 1, const int &bias = 0,
+    const std::tuple<int, int> &output_size = std::make_tuple(0, 0)) {
   int k = weight.size();
   int kernel_size = (k - 1) * dilation + 1;
   vector<vector<int>> double_weight(k, vector<int>(k, 0));
@@ -186,8 +190,8 @@ torch::Tensor sparse_convolution_1d_colwise(
     const vector<vector<int>> &homo_snps,
     const vector<vector<int>> &hetero_snps, const int &num_snps,
     const int &num_individuals, const vector<vector<int>> &weight,
-    const std::tuple<int, int> &output_size = std::make_tuple(0, 0),
-    const int &bias = 0, const int &stride = 1, const int &dilation = 1) {
+    const int &stride = 1, const int &dilation = 1, const int &bias = 0,
+    const std::tuple<int, int> &output_size = std::make_tuple(0, 0)) {
 
   int k_row = weight.size();
   int k_col = weight.at(0).size();
@@ -218,6 +222,7 @@ torch::Tensor sparse_convolution_1d_colwise(
       continue;
     }
     for (int i : homo_snps.at(j)) {
+      // std::cout << i << std::endl;
       if (stride_dilation_check && i % std::min(dilation, stride) != 0) {
         continue;
       }
@@ -266,12 +271,13 @@ int handle_element(const int &i, const int &j, const int &stride,
         looking_for_next = false;
         starting_indices_homo[b] = starting_index;
       }
-      if ((row - i * stride) % dilation != 0)
+      if ((row - i * stride) % dilation != 0) {
+        row = homo_snps[col][++starting_index];
         continue;
+      }
       int a = (row - i * stride) / dilation;
       sum += double_weight[b][a];
-      starting_index++;
-      row = homo_snps[col][starting_index];
+      row = homo_snps[col][++starting_index];
     }
     if (looking_for_next) {
       while (starting_index < homo_snps[col].size() &&
@@ -289,12 +295,13 @@ int handle_element(const int &i, const int &j, const int &stride,
         looking_for_next = false;
         starting_indices_hetero[b] = starting_index;
       }
-      if ((row - i * stride) % dilation != 0)
+      if ((row - i * stride) % dilation != 0) {
+        row = hetero_snps[col][++starting_index];
         continue;
+      }
       int a = (row - i * stride) / dilation;
       sum += weight[b][a];
-      starting_index++;
-      row = hetero_snps[col][starting_index];
+      row = hetero_snps[col][++starting_index];
     }
     if (looking_for_next) {
       while (starting_index < hetero_snps[col].size() &&
@@ -307,14 +314,13 @@ int handle_element(const int &i, const int &j, const int &stride,
   return sum;
 }
 
-// updated version, more tuned for long filters. assume weight is colwise as
-// well test if stride is greater than window size?
+// updated version, more tuned for long filters. assume weight is colwise
 torch::Tensor sparse_convolution(
     const vector<vector<int>> &homo_snps,
     const vector<vector<int>> &hetero_snps, const int &num_snps,
     const int &num_individuals, const vector<vector<int>> &weight,
-    const std::tuple<int, int> &output_size = std::make_tuple(0, 0),
-    const int &bias = 0, const int &stride = 1, const int &dilation = 1) {
+    const int &stride = 1, const int &dilation = 1, const int &bias = 0,
+    const std::tuple<int, int> &output_size = std::make_tuple(0, 0)) {
 
   int k_col = weight.size();
   int k_row = weight.at(0).size(); // long way
@@ -341,11 +347,9 @@ torch::Tensor sparse_convolution(
   // i and j are result indices, a and b are filter indices, row and col are
   // input indices
   for (int j = 0; j < result_col_size; j++) {
-    // std::cout << "j: " << j << std::endl;
     vector<int> starting_indices_homo(k_row, 0);
     vector<int> starting_indices_hetero(k_row, 0);
     for (int i = 0; i < result_row_size; i++) {
-      // std::cout << "i: " << i << std::endl;
       int sum = handle_element(i, j, stride, dilation, k_row, k_col,
                                starting_indices_homo, starting_indices_hetero,
                                homo_snps, hetero_snps, weight, double_weight);
