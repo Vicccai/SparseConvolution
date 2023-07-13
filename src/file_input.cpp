@@ -339,7 +339,7 @@ vector<vector<int>> FileInput::TxtToDenseVector(const string &file_path) {
   return data;
 }
 
-torch::Tensor TxtToDenseTensor(const string &file_path) {
+torch::Tensor FileInput::TxtToDenseTensor(const string &file_path) {
   ifstream data_file(file_path);
 
   if (!data_file.is_open()) {
