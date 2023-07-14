@@ -19,6 +19,7 @@ void handle_row_1d_result_colwise(
       break;
     if (r % dilation != 0 || result_row >= result_row_size)
       continue;
+    int row_index = r / dilation;
     for (int c = j - jToUse / stride * stride; c < kernel_cols; c += stride) {
       int result_col = (j - c) / stride;
       if (result_col < 0)
@@ -26,7 +27,7 @@ void handle_row_1d_result_colwise(
       if (c % dilation != 0 || result_col >= result_col_size)
         continue;
       result[result_col * result_row_size + result_row] +=
-          weight[r / dilation][c / dilation];
+          weight[row_index][c / dilation];
     }
   }
 }
