@@ -6,7 +6,7 @@ using std::string;
 using std::stringstream;
 using std::vector;
 
-namespace fileinput {
+using namespace fileinput;
 
 FileInput::FileInput() {
   num_individuals = 0;
@@ -77,10 +77,6 @@ GenotypeData FileInput::VcfToSparseTensor(const string &file_path) {
         }
       }
       homo_snps.push_back(homo_inds);
-      torch::Tensor hetero_inds_tensor =
-          torch::from_blob(hetero_inds.data(), {(int)hetero_inds.size()},
-                           torch::TensorOptions().dtype(torch::kInt32))
-              .to(torch::kInt64);
       hetero_snps.push_back(hetero_inds);
     }
   }
@@ -370,4 +366,42 @@ torch::Tensor FileInput::TxtToDenseTensor(const string &file_path) {
       data.data(), {rows, cols}, torch::TensorOptions().dtype(torch::kInt32));
   return torch_result;
 }
-} // namespace fileinput
+
+GeneralData FileInput::VcfToGeneral(const string &file_path) {
+  PreProcess(file_path);
+  ifstream vcf_file(file_path);
+
+  if (!vcf_file.is_open()) {
+    std::cout << "Could not open file: " << file_path << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  string next_line = "";
+  vector<vector<int>> indices;
+  vector<vector<double>> values;
+
+  while (getline(vcf_file, next_line)) {
+    if (next_line.at(0) != '#') {
+      num_snps++;
+      stringstream buffer(next_line);
+      string item = "";
+      vector<int> row_indices;
+      vector<double> row_values;
+      int item_index = 0;
+      while (getline(buffer, item, '\t')) {
+        if (item_index++ < num_empty_fields)
+          continue;
+        if (item == "1|1") {
+          row_indices.push_back(item_index - num_empty_fields - 1);
+          row_values.push_back(2);
+        } else if (item == "0|1" || item == "1|0") {
+          row_indices.push_back(item_index - num_empty_fields - 1);
+          row_values.push_back(1);
+        }
+      }
+      indices.push_back(row_indices);
+      values.push_back(row_values);
+    }
+  }
+  return GeneralData(num_snps, num_individuals, indices, values);
+}

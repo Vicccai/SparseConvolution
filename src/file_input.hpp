@@ -1,4 +1,5 @@
 #include "genotype_data.hpp"
+#include "general_data.hpp"
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -64,6 +65,8 @@ public:
   vector<vector<int>> TxtToDenseVector(const std::string &file_path);
 
   void VcfConvert(const std::string &file_path, const std::string &output_path);
+
+  GeneralData VcfToGeneral(const std::string &file_path);
 };
 
 } // namespace fileinput

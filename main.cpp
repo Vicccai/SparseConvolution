@@ -1,4 +1,4 @@
-#include "test.cpp"
+#include "src/test.cpp"
 #include <chrono>
 #include <iostream>
 #include <torch/torch.h>
@@ -9,6 +9,8 @@ using std::vector;
 namespace F = torch::nn::functional;
 
 int main() {
+  test::test_general_sparse_same(2, std::make_tuple(1, 1),
+                                 std::make_tuple(1, 1));
   // FileInput input = FileInput();
   // torch::Tensor torch_dense_data =
   //     input.TxtToDenseTensor("../data/data_01.txt");
@@ -20,7 +22,7 @@ int main() {
   // test.numel()); std::cout << v << std::endl;
   // test::test_same(100, 1, 1);
   // benchmark::benchmark_density();
-  test::test_stride_dilation(50);
+  // test::test_stride_dilation(50);
   // test::test_torch_dense(2000, 1, 1);
   // test::test_conv2d();
   // test::test_same(1000, 5, 2);

@@ -1,11 +1,10 @@
-#include <fstream>
-#include <random>
-#include <vector>
+#include "generate_data.hpp"
 
 using std::string;
 using std::vector;
 
 namespace generate {
+
 vector<vector<int>> generate_data(const double &density, const int &rows,
                                   const int &cols) {
   vector<vector<int>> data(rows, vector<int>(cols, 0));
