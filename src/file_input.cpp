@@ -339,7 +339,7 @@ vector<vector<int>> FileInput::TxtToDenseVector(const string &file_path) {
   return data;
 }
 
-torch::Tensor TxtToDenseTensor(const string &file_path) {
+torch::Tensor FileInput::TxtToDenseTensor(const string &file_path) {
   ifstream data_file(file_path);
 
   if (!data_file.is_open()) {
@@ -366,10 +366,8 @@ torch::Tensor TxtToDenseTensor(const string &file_path) {
     }
   }
 
-  torch::Tensor torch_result =
-      torch::from_blob(data.data(), {rows, count_cols},
-                       torch::TensorOptions().dtype(torch::kInt32))
-          .to(torch::kInt64);
+  torch::Tensor torch_result = torch::from_blob(
+      data.data(), {rows, cols}, torch::TensorOptions().dtype(torch::kInt32));
   return torch_result;
 }
 } // namespace fileinput

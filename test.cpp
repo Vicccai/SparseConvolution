@@ -50,10 +50,9 @@ GenotypeData test_txt_to_individual() {
   return data;
 }
 
-torch::Tensor test_naive_dense(const int &kernel_length, const int &stride,
+torch::Tensor test_naive_dense(vector<vector<int>> data,
+                               const int &kernel_length, const int &stride,
                                const int &dilation) {
-  FileInput input = FileInput();
-  vector<vector<int>> data = input.VcfToDenseVector("../data/cleaned_test.vcf");
   vector<vector<int>> weight(kernel_length, vector<int>(2, 2));
   auto start = steady_clock::now();
   torch::Tensor result = dense_convolution(data, weight, stride, dilation);
@@ -63,10 +62,8 @@ torch::Tensor test_naive_dense(const int &kernel_length, const int &stride,
   return result;
 }
 
-torch::Tensor test_torch_dense(const int &kernel_length, const int &stride,
-                               const int &dilation) {
-  FileInput input = FileInput();
-  torch::Tensor data = input.VcfToDenseTensor("../data/cleaned_test.vcf");
+torch::Tensor test_torch_dense(torch::Tensor data, const int &kernel_length,
+                               const int &stride, const int &dilation) {
   torch::Tensor data_reshape =
       data.reshape({1, 1, data.sizes().at(0), data.sizes().at(1)});
   torch::Tensor weight = 2 * torch::ones({kernel_length, 2});
@@ -82,13 +79,12 @@ torch::Tensor test_torch_dense(const int &kernel_length, const int &stride,
   return result;
 }
 
-torch::Tensor test_sparse_1d_colwise(const int &kernel_length,
-                                     const int &stride, const int &dilation) {
-  FileInput input = FileInput();
-  GenotypeData data = input.TxtToSparseTensor("../data/genotype_data.txt");
+torch::Tensor test_sparse_input_based(GenotypeData data,
+                                      const int &kernel_length,
+                                      const int &stride, const int &dilation) {
   vector<vector<int>> weight(kernel_length, vector<int>(2, 2));
   auto start = steady_clock::now();
-  torch::Tensor result = sparse_convolution_1d_colwise(
+  torch::Tensor result = sparse_convolution_input_based(
       data.homo_snps, data.hetero_snps, data.num_snps, data.num_individuals,
       weight, stride, dilation);
   auto end = steady_clock::now();
@@ -97,57 +93,33 @@ torch::Tensor test_sparse_1d_colwise(const int &kernel_length,
   return result;
 }
 
-torch::Tensor test_sparse_convolution(const int &kernel_length,
-                                      const int &stride, const int &dilation) {
-  FileInput input = FileInput();
-  GenotypeData data = input.TxtToSparseTensor("../data/genotype_data.txt");
+torch::Tensor test_sparse_result_based(GenotypeData data,
+                                       const int &kernel_length,
+                                       const int &stride, const int &dilation) {
   vector<vector<int>> weight(2, vector<int>(kernel_length, 2));
   auto start = steady_clock::now();
-  torch::Tensor result =
-      sparse_convolution(data.homo_snps, data.hetero_snps, data.num_snps,
-                         data.num_individuals, weight, stride, dilation);
+  torch::Tensor result = sparse_convolution_result_based(
+      data.homo_snps, data.hetero_snps, data.num_snps, data.num_individuals,
+      weight, stride, dilation);
   auto end = steady_clock::now();
   std::cout << "Time for Sparse 2: "
             << duration_cast<milliseconds>(end - start).count() << std::endl;
   return result;
 }
 
-void test_sparse_2d() {
-  FileInput input = FileInput();
-  GenotypeData data = input.VcfToSparseTensor("../data/cleaned_test.vcf");
-  vector<vector<int>> weight{{1, 2}, {3, 4}};
-
-  auto start = steady_clock::now();
-  vector<vector<int>> result =
-      sparse_convolution_2d(data.homo_snps, data.hetero_snps, data.num_snps,
-                            data.num_individuals, weight);
-  auto end = steady_clock::now();
-  std::cout << "Time for Sparse 2d: "
-            << duration_cast<milliseconds>(end - start).count() << std::endl;
-}
-
-void test_sparse_1d() {
-  FileInput input = FileInput();
-  GenotypeData data = input.VcfToSparseTensor("../data/cleaned_test.vcf");
-  vector<vector<int>> weight{{1, 2}, {3, 4}};
-
-  auto start = steady_clock::now();
-  vector<int> result =
-      sparse_convolution_1d(data.homo_snps, data.hetero_snps, data.num_snps,
-                            data.num_individuals, weight);
-  auto end = steady_clock::now();
-  std::cout << "Time for Sparse 1d row-wise: "
-            << duration_cast<milliseconds>(end - start).count() << std::endl;
-}
-
 void test_same(const int &kernel_length, const int &stride,
                const int &dilation) {
-  torch::Tensor sparse_result =
-      test::test_sparse_1d_colwise(kernel_length, stride, dilation);
-  torch::Tensor sparse_result_2 =
-      test::test_sparse_convolution(kernel_length, stride, dilation);
+  FileInput input = FileInput();
+  vector<vector<int>> naive_dense_data =
+      input.TxtToDenseVector("../data/data_01.txt");
+  GenotypeData sparse_data =
+      input.TxtToSparseTensor("../data/data_trans_01.txt");
+  torch::Tensor sparse_result = test::test_sparse_input_based(
+      sparse_data, kernel_length, stride, dilation);
+  torch::Tensor sparse_result_2 = test::test_sparse_result_based(
+      sparse_data, kernel_length, stride, dilation);
   torch::Tensor dense_result =
-      test::test_naive_dense(kernel_length, stride, dilation);
+      test::test_naive_dense(naive_dense_data, kernel_length, stride, dilation);
   std::cout << torch::equal(sparse_result, sparse_result_2) << std::endl;
   std::cout << torch::equal(sparse_result, dense_result) << std::endl;
 }
