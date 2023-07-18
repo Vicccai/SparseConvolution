@@ -1,5 +1,5 @@
-#include "genotype_data.hpp"
 #include "general_data.hpp"
+#include "genotype_data.hpp"
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -49,7 +49,20 @@ public:
   torch::Tensor VcfToDenseTensor(const std::string &file_path);
   torch::Tensor TxtToDenseTensor(const std::string &file_path);
 
+  /**
+   * @brief Returns row-wise genotype data from VCF file.
+   *
+   * @param file_path
+   * @return GenotypeData
+   */
   GenotypeData VcfToSparseTensor(const std::string &file_path);
+  /**
+   * @brief Returns column-wise genotype data from VCF file. If possible use
+   * TxtToSparseTensor, which is faster
+   *
+   * @param file_path
+   * @return GenotypeData
+   */
   GenotypeData VcfToSparseTensorIndividuals(const std::string &file_path);
   /**
    * @brief If using for sparse convolution, make sure txt file is column-wise.

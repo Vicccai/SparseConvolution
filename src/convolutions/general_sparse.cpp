@@ -1,8 +1,4 @@
-#include <torch/torch.h>
-#include <tuple>
-#include <vector>
-
-using std::vector;
+#include "general_sparse.hpp"
 
 void do_convolution(
     const int &stride_dilation_check_row, const int &stride_dilation_check_col,
@@ -17,14 +13,16 @@ void do_convolution(
         i % std::min(dilation_row, stride_row) != 0) {
       continue;
     }
-    int iToUse = std::min(i, num_rows - kernel_rows);
-    for (int j : indices.at(i)) {
+    int i_to_use = std::min(i, num_rows - kernel_rows);
+    vector<int> index_row = indices.at(i);
+    for (int j_index = 0; j_index < index_row.size(); j_index++) {
+      int j = index_row[j_index];
       if (stride_dilation_check_col &&
           j % std::min(dilation_col, stride_col) != 0) {
         continue;
       }
-      int jToUse = std::min(j, num_cols - kernel_cols);
-      for (int r = i - iToUse / stride_row * stride_row; r < kernel_rows;
+      int j_to_use = std::min(j, num_cols - kernel_cols);
+      for (int r = i - i_to_use / stride_row * stride_row; r < kernel_rows;
            r += stride_row) {
         int result_row = (i - r) / stride_row;
         if (result_row < 0)
@@ -32,7 +30,7 @@ void do_convolution(
         if (r % dilation_row != 0 || result_row >= result_row_size)
           continue;
         int row_index = r / dilation_row;
-        for (int c = j - jToUse / stride_col * stride_col; c < kernel_cols;
+        for (int c = j - j_to_use / stride_col * stride_col; c < kernel_cols;
              c += stride_col) {
           int result_col = (j - c) / stride_col;
           if (result_col < 0)
@@ -40,7 +38,7 @@ void do_convolution(
           if (c % dilation_col != 0 || result_col >= result_col_size)
             continue;
           result[result_row * result_col_size + result_col] +=
-              weight[row_index][c / dilation_col] * values[i][j];
+              weight[row_index][c / dilation_col] * values[i][j_index];
         }
       }
     }
@@ -51,11 +49,9 @@ void do_convolution(
 torch::Tensor general_sparse_convolution(
     const vector<vector<int>> &indices, const vector<vector<double>> &values,
     const int &num_rows, const int &num_cols,
-    const vector<vector<double>> &weight,
-    const std::tuple<int, int> &stride = std::make_tuple(1, 1),
-    const std::tuple<int, int> &dilation = std::make_tuple(1, 1),
-    const int &bias = 0,
-    const std::tuple<int, int> &output_size = std::make_tuple(0, 0)) {
+    const vector<vector<double>> &weight, const std::tuple<int, int> &stride,
+    const std::tuple<int, int> &dilation, const int &bias,
+    const std::tuple<int, int> &output_size) {
 
   int k_row = weight.size();
   int k_col = weight.at(0).size();
@@ -89,17 +85,17 @@ torch::Tensor general_sparse_convolution(
                  result_col_size, indices, values, weight, result);
   torch::Tensor torch_result =
       torch::from_blob(result.data(), {result_row_size, result_col_size},
-                       torch::TensorOptions().dtype(torch::kDouble));
+                       torch::TensorOptions().dtype(torch::kDouble))
+          .clone();
   return torch_result;
 }
 
 torch::Tensor general_sparse_convolution(
     const vector<vector<int>> &indices, const vector<vector<double>> &values,
     const int &num_rows, const int &num_cols,
-    const vector<vector<double>> &weight, const int &stride = 1,
-    const std::tuple<int, int> &dilation = std::make_tuple(1, 1),
-    const int &bias = 0,
-    const std::tuple<int, int> &output_size = std::make_tuple(0, 0)) {
+    const vector<vector<double>> &weight, const int &stride,
+    const std::tuple<int, int> &dilation, const int &bias,
+    const std::tuple<int, int> &output_size) {
   return general_sparse_convolution(indices, values, num_rows, num_cols, weight,
                                     std::make_tuple(stride, stride), dilation,
                                     bias, output_size);
@@ -108,10 +104,9 @@ torch::Tensor general_sparse_convolution(
 torch::Tensor general_sparse_convolution(
     const vector<vector<int>> &indices, const vector<vector<double>> &values,
     const int &num_rows, const int &num_cols,
-    const vector<vector<double>> &weight,
-    const std::tuple<int, int> &stride = std::make_tuple(1, 1),
-    const int &dilation = 1, const int &bias = 0,
-    const std::tuple<int, int> &output_size = std::make_tuple(0, 0)) {
+    const vector<vector<double>> &weight, const std::tuple<int, int> &stride,
+    const int &dilation, const int &bias,
+    const std::tuple<int, int> &output_size) {
   return general_sparse_convolution(indices, values, num_rows, num_cols, weight,
                                     stride, std::make_tuple(dilation, dilation),
                                     bias, output_size);
@@ -120,9 +115,9 @@ torch::Tensor general_sparse_convolution(
 torch::Tensor general_sparse_convolution(
     const vector<vector<int>> &indices, const vector<vector<double>> &values,
     const int &num_rows, const int &num_cols,
-    const vector<vector<double>> &weight, const int &stride = 1,
-    const int &dilation = 1, const int &bias = 0,
-    const std::tuple<int, int> &output_size = std::make_tuple(0, 0)) {
+    const vector<vector<double>> &weight, const int &stride,
+    const int &dilation, const int &bias,
+    const std::tuple<int, int> &output_size) {
   return general_sparse_convolution(indices, values, num_rows, num_cols, weight,
                                     std::make_tuple(stride, stride),
                                     std::make_tuple(dilation, dilation), bias,

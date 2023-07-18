@@ -117,7 +117,8 @@ torch::Tensor FileInput::VcfToDenseTensor(const string &file_path) {
   vcf_file.close();
   torch::Tensor genotype_matrix =
       torch::from_blob(snps.data(), {num_snps, num_individuals},
-                       torch::TensorOptions().dtype(torch::kInt32));
+                       torch::TensorOptions().dtype(torch::kInt32))
+          .clone();
   return genotype_matrix;
 }
 
@@ -362,8 +363,10 @@ torch::Tensor FileInput::TxtToDenseTensor(const string &file_path) {
     }
   }
 
-  torch::Tensor torch_result = torch::from_blob(
-      data.data(), {rows, cols}, torch::TensorOptions().dtype(torch::kInt32));
+  torch::Tensor torch_result =
+      torch::from_blob(data.data(), {rows, cols},
+                       torch::TensorOptions().dtype(torch::kInt32))
+          .clone();
   return torch_result;
 }
 

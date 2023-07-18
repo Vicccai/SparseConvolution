@@ -1,14 +1,4 @@
-#include "dense_convolution.cpp"
-#include "file_input.hpp"
-#include "general_sparse.cpp"
-#include "sparse_convolution.cpp"
-#include <chrono>
-#include <torch/torch.h>
-#include <tuple>
-using fileinput::FileInput;
-using namespace std::chrono;
-namespace F = torch::nn::functional;
-using namespace torch::indexing;
+#include "test.hpp"
 
 namespace test {
 
@@ -53,10 +43,12 @@ GenotypeData test_txt_to_individual() {
 }
 
 torch::Tensor test_naive_dense(vector<vector<int>> data,
-                               const int &kernel_length,
+                               const std::tuple<int, int> &kernel_size,
                                const std::tuple<int, int> &stride,
                                const std::tuple<int, int> &dilation) {
-  vector<vector<int>> weight(kernel_length, vector<int>(2, 2));
+  int kernel_length = std::get<0>(kernel_size);
+  int kernel_width = std::get<1>(kernel_size);
+  vector<vector<int>> weight(kernel_length, vector<int>(kernel_width, 2));
   auto start = steady_clock::now();
   torch::Tensor result = dense_convolution(data, weight, stride, dilation);
   auto end = steady_clock::now();
@@ -65,13 +57,16 @@ torch::Tensor test_naive_dense(vector<vector<int>> data,
   return result;
 }
 
-torch::Tensor test_torch_dense(torch::Tensor data, const int &kernel_length,
+torch::Tensor test_torch_dense(torch::Tensor data,
+                               const std::tuple<int, int> &kernel_size,
                                const int &stride, const int &dilation) {
+  int kernel_length = std::get<0>(kernel_size);
+  int kernel_width = std::get<1>(kernel_size);
   torch::Tensor data_reshape =
       data.reshape({1, 1, data.sizes().at(0), data.sizes().at(1)});
-  torch::Tensor weight = 2 * torch::ones({kernel_length, 2});
+  torch::Tensor weight = 2 * torch::ones({kernel_length, kernel_width});
   torch::Tensor weight_reshaped =
-      weight.reshape({1, 1, kernel_length, 2}).to(torch::kInt32);
+      weight.reshape({1, 1, kernel_length, kernel_width}).to(torch::kInt32);
   auto start = steady_clock::now();
   torch::Tensor result =
       F::conv2d(data_reshape, weight_reshaped,
@@ -83,10 +78,12 @@ torch::Tensor test_torch_dense(torch::Tensor data, const int &kernel_length,
 }
 
 torch::Tensor test_sparse_input_based(GenotypeData data,
-                                      const int &kernel_length,
+                                      const std::tuple<int, int> &kernel_size,
                                       const std::tuple<int, int> &stride,
                                       const std::tuple<int, int> &dilation) {
-  vector<vector<int>> weight(kernel_length, vector<int>(2, 2));
+  int kernel_length = std::get<0>(kernel_size);
+  int kernel_width = std::get<1>(kernel_size);
+  vector<vector<int>> weight(kernel_length, vector<int>(kernel_width, 2));
   auto start = steady_clock::now();
   torch::Tensor result = sparse_convolution_input_based(
       data.homo_snps, data.hetero_snps, data.num_snps, data.num_individuals,
@@ -97,10 +94,13 @@ torch::Tensor test_sparse_input_based(GenotypeData data,
   return result;
 }
 
-torch::Tensor test_general_sparse(GeneralData data, const int &size,
+torch::Tensor test_general_sparse(GeneralData data,
+                                  const std::tuple<int, int> &kernel_size,
                                   const std::tuple<int, int> &stride,
                                   const std::tuple<int, int> &dilation) {
-  vector<vector<double>> weight(size, vector<double>(size, 2));
+  int kernel_length = std::get<0>(kernel_size);
+  int kernel_width = std::get<1>(kernel_size);
+  vector<vector<double>> weight(kernel_length, vector<double>(kernel_width, 2));
   auto start = steady_clock::now();
   torch::Tensor result =
       general_sparse_convolution(data.indices, data.values, data.num_rows,
@@ -112,10 +112,12 @@ torch::Tensor test_general_sparse(GeneralData data, const int &size,
 }
 
 torch::Tensor test_sparse_result_based(GenotypeData data,
-                                       const int &kernel_length,
+                                       const std::tuple<int, int> &kernel_size,
                                        const std::tuple<int, int> &stride,
                                        const std::tuple<int, int> &dilation) {
-  vector<vector<int>> weight(2, vector<int>(kernel_length, 2));
+  int kernel_length = std::get<0>(kernel_size);
+  int kernel_width = std::get<1>(kernel_size);
+  vector<vector<int>> weight(kernel_width, vector<int>(kernel_length, 2));
   auto start = steady_clock::now();
   torch::Tensor result = sparse_convolution_result_based(
       data.homo_snps, data.hetero_snps, data.num_snps, data.num_individuals,
@@ -126,53 +128,54 @@ torch::Tensor test_sparse_result_based(GenotypeData data,
   return result;
 }
 
-void test_same(const int &kernel_length, const std::tuple<int, int> &stride,
+void test_same(const std::tuple<int, int> &kernel_size,
+               const std::tuple<int, int> &stride,
                const std::tuple<int, int> &dilation) {
   FileInput input = FileInput();
   vector<vector<int>> naive_dense_data =
       input.TxtToDenseVector("../data/data_01.txt");
   GenotypeData sparse_data =
       input.TxtToSparseTensor("../data/data_trans_01.txt");
-  torch::Tensor sparse_result = test::test_sparse_input_based(
-      sparse_data, kernel_length, stride, dilation);
+  torch::Tensor sparse_result =
+      test::test_sparse_input_based(sparse_data, kernel_size, stride, dilation);
   torch::Tensor sparse_result_2 = test::test_sparse_result_based(
-      sparse_data, kernel_length, stride, dilation);
+      sparse_data, kernel_size, stride, dilation);
   torch::Tensor dense_result =
-      test::test_naive_dense(naive_dense_data, kernel_length, stride, dilation);
+      test::test_naive_dense(naive_dense_data, kernel_size, stride, dilation);
   std::cout << torch::equal(sparse_result, sparse_result_2) << std::endl;
   std::cout << torch::equal(sparse_result, dense_result) << std::endl;
 }
 
-void test_same(const int &kernel_length, const std::tuple<int, int> &stride,
-               const int &dilation) {
-  test_same(kernel_length, stride, std::make_tuple(dilation, dilation));
+void test_same(const std::tuple<int, int> &kernel_size,
+               const std::tuple<int, int> &stride, const int &dilation) {
+  test_same(kernel_size, stride, std::make_tuple(dilation, dilation));
 }
 
-void test_same(const int &kernel_length, const int &stride,
+void test_same(const std::tuple<int, int> &kernel_size, const int &stride,
                const std::tuple<int, int> &dilation) {
-  test_same(kernel_length, std::make_tuple(stride, stride), dilation);
+  test_same(kernel_size, std::make_tuple(stride, stride), dilation);
 }
 
-void test_same(const int &kernel_length, const int &stride,
+void test_same(const std::tuple<int, int> &kernel_size, const int &stride,
                const int &dilation) {
-  test_same(kernel_length, std::make_tuple(stride, stride),
+  test_same(kernel_size, std::make_tuple(stride, stride),
             std::make_tuple(dilation, dilation));
 }
 
-void test_stride_dilation(const int &kernel_length) {
-  test_same(kernel_length, 1, 1);
-  test_same(kernel_length, 3, 2);
-  test_same(kernel_length, 2, 3);
-  test_same(kernel_length, 2, 2);
-  test_same(kernel_length, 2, std::make_tuple(3, 2));
-  test_same(kernel_length, 2, std::make_tuple(2, 3));
-  test_same(kernel_length, 2, std::make_tuple(2, 2));
-  test_same(kernel_length, std::make_tuple(3, 2), 2);
-  test_same(kernel_length, std::make_tuple(2, 3), 2);
-  test_same(kernel_length, std::make_tuple(2, 2), 2);
-  test_same(kernel_length, std::make_tuple(3, 2), std::make_tuple(2, 3));
-  test_same(kernel_length, std::make_tuple(2, 3), std::make_tuple(3, 2));
-  test_same(kernel_length, std::make_tuple(2, 2), std::make_tuple(2, 2));
+void test_stride_dilation(const std::tuple<int, int> &kernel_size) {
+  test_same(kernel_size, 1, 1);
+  test_same(kernel_size, 3, 2);
+  test_same(kernel_size, 2, 3);
+  test_same(kernel_size, 2, 2);
+  test_same(kernel_size, 2, std::make_tuple(3, 2));
+  test_same(kernel_size, 2, std::make_tuple(2, 3));
+  test_same(kernel_size, 2, std::make_tuple(2, 2));
+  test_same(kernel_size, std::make_tuple(3, 2), 2);
+  test_same(kernel_size, std::make_tuple(2, 3), 2);
+  test_same(kernel_size, std::make_tuple(2, 2), 2);
+  test_same(kernel_size, std::make_tuple(3, 2), std::make_tuple(2, 3));
+  test_same(kernel_size, std::make_tuple(2, 3), std::make_tuple(3, 2));
+  test_same(kernel_size, std::make_tuple(2, 2), std::make_tuple(2, 2));
 }
 
 void test_conv2d() {
@@ -226,20 +229,18 @@ void test_conv2d() {
   }
 }
 
-void test_general_sparse_same(const int &kernel_length,
+void test_general_sparse_same(const std::tuple<int, int> &kernel_size,
                               const std::tuple<int, int> &stride,
                               const std::tuple<int, int> &dilation) {
   FileInput input = FileInput();
   vector<vector<int>> naive_dense_data =
-      input.TxtToDenseVector("../data/data_01.txt");
+      input.VcfToDenseVector("../data/cleaned_test.vcf");
   GeneralData sparse_data = input.VcfToGeneral("../data/cleaned_test.vcf");
-  torch::Tensor sparse_result =
-      test::test_general_sparse(sparse_data, kernel_length, stride, dilation);
 
-  std::cout << sparse_result.index({Slice(0, 1)}) << std::endl;
+  torch::Tensor sparse_result =
+      test::test_general_sparse(sparse_data, kernel_size, stride, dilation);
   torch::Tensor dense_result =
-      test::test_naive_dense(naive_dense_data, kernel_length, stride, dilation);
-  std::cout << dense_result.index({Slice(0, 1)}) << std::endl;
+      test::test_naive_dense(naive_dense_data, kernel_size, stride, dilation);
   std::cout << torch::equal(sparse_result, dense_result) << std::endl;
 }
 

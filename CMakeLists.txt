@@ -6,7 +6,14 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 set(SOURCES main.cpp src/file_input.cpp)
 
-add_executable(SparseConvolution main.cpp src/file_input.cpp)
+add_executable(SparseConvolution 
+main.cpp 
+src/file_input.cpp 
+src/benchmark.cpp 
+src/test.cpp
+src/convolutions/dense_convolution.cpp
+src/convolutions/sparse_convolution.cpp
+src/convolutions/general_sparse.cpp)
 target_link_libraries(SparseConvolution "${TORCH_LIBRARIES}")
 set_property(TARGET SparseConvolution PROPERTY CXX_STANDARD 17)
 
