@@ -1,7 +1,7 @@
-#include "convolutions/dense_convolution.hpp"
-#include "convolutions/general_sparse.hpp"
-#include "convolutions/sparse_convolution.hpp"
-#include "file_input.hpp"
+#include "../convolutions/dense_convolution.hpp"
+#include "../convolutions/general_sparse.hpp"
+#include "../convolutions/sparse_convolution.hpp"
+#include "../data_handling/file_input.hpp"
 #include <chrono>
 #include <torch/torch.h>
 #include <tuple>
