@@ -1,4 +1,3 @@
-// #include <torch/extension.h>
 #include "sparse_convolution.hpp"
 
 void handle_row_1d_result_colwise(
@@ -240,8 +239,6 @@ torch::Tensor sparse_convolution_result_based(
   int stride_col = std::get<1>(stride);
   int dilation_row = std::get<0>(dilation);
   int dilation_col = std::get<1>(dilation);
-  int kernel_rows = (k_row - 1) * dilation_row + 1;
-  int kernel_cols = (k_col - 1) * dilation_col + 1;
   if (std::get<0>(output_size) == 0 && std::get<1>(output_size) == 0) {
     result_row_size =
         (num_snps - ((k_row - 1) * dilation_row + 1)) / stride_row + 1;
