@@ -1,7 +1,7 @@
-#include "convolutions/dense_convolution.hpp"
-#include "convolutions/general_sparse.hpp"
-#include "convolutions/sparse_convolution.hpp"
-#include "file_input.hpp"
+#include "../convolutions/dense_convolution.hpp"
+#include "../convolutions/general_sparse.hpp"
+#include "../convolutions/sparse_convolution.hpp"
+#include "../data_handling/file_input.hpp"
 #include <chrono>
 #include <torch/torch.h>
 #include <tuple>
@@ -42,6 +42,11 @@ torch::Tensor test_sparse_result_based(GenotypeData data,
                                        const std::tuple<int, int> &stride,
                                        const std::tuple<int, int> &dilation);
 
+torch::Tensor test_sparse_optimized(GenotypeData data,
+                                    const std::tuple<int, int> &kernel_size,
+                                    const std::tuple<int, int> &stride,
+                                    const std::tuple<int, int> &dilation);
+
 void test_same(const std::tuple<int, int> &kernel_size,
                const std::tuple<int, int> &stride,
                const std::tuple<int, int> &dilation);
@@ -63,4 +68,7 @@ void test_general_sparse_same(const std::tuple<int, int> &kernel_size,
                               const std::tuple<int, int> &stride,
                               const std::tuple<int, int> &dilation);
 
+void test_optimized_sparse_same(const std::tuple<int, int> &kernel_size,
+                                const std::tuple<int, int> &stride,
+                                const std::tuple<int, int> &dilation);
 } // namespace test

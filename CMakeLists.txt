@@ -8,9 +8,9 @@ set(SOURCES main.cpp src/file_input.cpp)
 
 add_executable(SparseConvolution 
 main.cpp 
-src/file_input.cpp 
-src/benchmark.cpp 
-src/test.cpp
+src/data_handling/file_input.cpp 
+src/testing/benchmark.cpp 
+src/testing/test.cpp
 src/convolutions/dense_convolution.cpp
 src/convolutions/sparse_convolution.cpp
 src/convolutions/general_sparse.cpp)

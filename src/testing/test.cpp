@@ -128,6 +128,23 @@ torch::Tensor test_sparse_result_based(GenotypeData data,
   return result;
 }
 
+torch::Tensor test_sparse_optimized(GenotypeData data,
+                                    const std::tuple<int, int> &kernel_size,
+                                    const std::tuple<int, int> &stride,
+                                    const std::tuple<int, int> &dilation) {
+  int kernel_length = std::get<0>(kernel_size);
+  int kernel_width = std::get<1>(kernel_size);
+  vector<vector<int>> weight(kernel_width, vector<int>(kernel_length, 2));
+  auto start = steady_clock::now();
+  torch::Tensor result = sparse_convolution_input_based_optimized(
+      data.homo_snps, data.hetero_snps, data.num_snps, data.num_individuals,
+      weight, stride, dilation);
+  auto end = steady_clock::now();
+  std::cout << "Time for Sparse Optimized: "
+            << duration_cast<milliseconds>(end - start).count() << std::endl;
+  return result;
+}
+
 void test_same(const std::tuple<int, int> &kernel_size,
                const std::tuple<int, int> &stride,
                const std::tuple<int, int> &dilation) {
@@ -244,4 +261,20 @@ void test_general_sparse_same(const std::tuple<int, int> &kernel_size,
   std::cout << torch::equal(sparse_result, dense_result) << std::endl;
 }
 
+void test_optimized_sparse_same(const std::tuple<int, int> &kernel_size,
+                                const std::tuple<int, int> &stride,
+                                const std::tuple<int, int> &dilation) {
+  FileInput input = FileInput();
+  vector<vector<int>> naive_dense_data =
+      input.TxtToDenseVector("../data/data_01.txt");
+  GenotypeData sparse_data =
+      input.TxtToSparseTensor("../data/data_trans_01.txt");
+  torch::Tensor dense_result =
+      test::test_naive_dense(naive_dense_data, kernel_size, stride, dilation);
+  torch::Tensor sparse_result =
+      test::test_sparse_optimized(sparse_data, kernel_size, stride, dilation);
+  // std::cout << dense_result.index({Slice(0, 1)}) << std::endl;
+  // std::cout << sparse_result.index({Slice(0, 1)}) << std::endl;
+  std::cout << torch::equal(sparse_result, dense_result) << std::endl;
+}
 } // namespace test
