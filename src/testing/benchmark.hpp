@@ -9,4 +9,6 @@ void benchmark_density();
 
 void benchmark_general();
 
+void benchmark_sparse();
+
 }

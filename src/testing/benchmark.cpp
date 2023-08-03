@@ -77,4 +77,30 @@ void benchmark_general() {
   }
 }
 
+void benchmark_sparse() {
+  FileInput input = FileInput();
+  GenotypeData sparse_data =
+      input.TxtToSparseTensor("../data/data_trans_01.txt");
+  std::tuple stride = std::make_tuple(1, 1);
+  std::tuple dilation = std::make_tuple(1, 1);
+
+  vector<string> densities = {"001", "005", "01", "02"};
+  vector<int> sizes = {50};
+  for (string density : densities) {
+    std::cout << "Density: " << density << std::endl;
+    GenotypeData sparse_data =
+        input.TxtToSparseTensor("../data/data_trans_" + density + ".txt");
+    for (int size : sizes) {
+      std::cout << "Size: " << size << std::endl;
+      for (int i = 0; i < 3; i++) {
+        std::cout << "Run: " << (i + 1) << std::endl;
+        test::test_sparse_input_based(sparse_data, std::make_tuple(size, 2),
+                                      stride, dilation);
+        test::test_sparse_optimized(sparse_data, std::make_tuple(size, 2),
+                                    stride, dilation);
+      }
+    }
+  }
+}
+
 } // namespace benchmark
