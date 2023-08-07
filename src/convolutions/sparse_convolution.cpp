@@ -5,7 +5,7 @@ void handle_row_1d_result_colwise_kernel(
     const int &stride_row, const int &stride_col, const int &dilation_row,
     const int &dilation_col, const int &num_snps, const int &num_individuals,
     const int &result_row_size, const int &result_col_size,
-    const vector<vector<int>> &weight, vector<int> &result) {
+    const vector<vector<double>> &weight, vector<double> &result) {
   int j_in_bounds = std::min(j, num_individuals - kernel_cols);
   int i_in_bounds = std::min(i, num_snps - kernel_rows);
   int c_start = j - j_in_bounds / stride_col * stride_col;
@@ -49,13 +49,13 @@ void handle_row_1d_result_colwise_kernel(
 torch::Tensor sparse_convolution_input_based_optimized(
     const vector<vector<int>> &homo_snps,
     const vector<vector<int>> &hetero_snps, const int &num_snps,
-    const int &num_individuals, const vector<vector<int>> &weight,
+    const int &num_individuals, const vector<vector<double>> &weight,
     const std::tuple<int, int> &stride, const std::tuple<int, int> &dilation,
-    const int &bias, const std::tuple<int, int> &output_size) {
+    const double &bias, const std::tuple<int, int> &output_size) {
 
   int k_col = weight.size();
   int k_row = weight.at(0).size();
-  vector<vector<int>> double_weight(k_col, vector<int>(k_row, 0));
+  vector<vector<double>> double_weight(k_col, vector<double>(k_row, 0));
   for (int i = 0; i < k_col; i++) {
     for (int j = 0; j < k_row; j++) {
       double_weight[i][j] = weight[i][j] * 2;
@@ -84,7 +84,7 @@ torch::Tensor sparse_convolution_input_based_optimized(
   bool stride_dilation_check_col =
       dilation_col > 1 && stride_col > 1 &&
       (stride_col % dilation_col == 0 || dilation_col % stride_col == 0);
-  vector<int> result(result_col_size * result_row_size, bias);
+  vector<double> result(result_col_size * result_row_size, bias);
   for (int j = 0; j < num_individuals; j++) {
     if (stride_dilation_check_col &&
         j % std::min(dilation_col, stride_col) != 0) {
@@ -113,7 +113,8 @@ torch::Tensor sparse_convolution_input_based_optimized(
   }
   torch::Tensor torch_result =
       torch::from_blob(result.data(), {result_col_size, result_row_size},
-                       torch::TensorOptions().dtype(torch::kInt32))
+                       torch::TensorOptions().dtype(torch::kFloat64))
+          .to(torch::kFloat32)
           .clone()
           .transpose(0, 1);
   return torch_result;
@@ -122,8 +123,8 @@ torch::Tensor sparse_convolution_input_based_optimized(
 torch::Tensor sparse_convolution_input_based_optimized(
     const vector<vector<int>> &homo_snps,
     const vector<vector<int>> &hetero_snps, const int &num_snps,
-    const int &num_individuals, const vector<vector<int>> &weight,
-    const int &stride, const std::tuple<int, int> &dilation, const int &bias,
+    const int &num_individuals, const vector<vector<double>> &weight,
+    const int &stride, const std::tuple<int, int> &dilation, const double &bias,
     const std::tuple<int, int> &output_size) {
   return sparse_convolution_input_based_optimized(
       homo_snps, hetero_snps, num_snps, num_individuals, weight,
@@ -133,8 +134,8 @@ torch::Tensor sparse_convolution_input_based_optimized(
 torch::Tensor sparse_convolution_input_based_optimized(
     const vector<vector<int>> &homo_snps,
     const vector<vector<int>> &hetero_snps, const int &num_snps,
-    const int &num_individuals, const vector<vector<int>> &weight,
-    const std::tuple<int, int> &stride, const int &dilation, const int &bias,
+    const int &num_individuals, const vector<vector<double>> &weight,
+    const std::tuple<int, int> &stride, const int &dilation, const double &bias,
     const std::tuple<int, int> &output_size) {
   return sparse_convolution_input_based_optimized(
       homo_snps, hetero_snps, num_snps, num_individuals, weight, stride,
@@ -144,8 +145,8 @@ torch::Tensor sparse_convolution_input_based_optimized(
 torch::Tensor sparse_convolution_input_based_optimized(
     const vector<vector<int>> &homo_snps,
     const vector<vector<int>> &hetero_snps, const int &num_snps,
-    const int &num_individuals, const vector<vector<int>> &weight,
-    const int &stride, const int &dilation, const int &bias,
+    const int &num_individuals, const vector<vector<double>> &weight,
+    const int &stride, const int &dilation, const double &bias,
     const std::tuple<int, int> &output_size) {
   return sparse_convolution_input_based_optimized(
       homo_snps, hetero_snps, num_snps, num_individuals, weight,

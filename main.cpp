@@ -12,9 +12,9 @@ using namespace torch::indexing;
 
 int main() {
   // benchmark::benchmark_general();
-  // test::test_optimized_sparse_same(
-  //     std::make_tuple(20, 2), std::make_tuple(1, 1), std::make_tuple(1, 1));
-  benchmark::benchmark_sparse();
+  test::test_optimized_sparse_same(
+      std::make_tuple(20, 2), std::make_tuple(1, 1), std::make_tuple(1, 1));
+  // benchmark::benchmark_sparse();
   // torch::Tensor test = torch::ones({3, 4}).to(torch::kInt32);
   // std::vector<int> v(test.data_ptr<int>(), test.data_ptr<int>() +
   // test.numel()); std::cout << v << std::endl;

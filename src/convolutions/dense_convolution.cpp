@@ -1,10 +1,10 @@
 #include "dense_convolution.hpp"
 
 torch::Tensor dense_convolution(const vector<vector<int>> &data,
-                                const vector<vector<int>> &weight,
+                                const vector<vector<double>> &weight,
                                 const std::tuple<int, int> &stride,
                                 const std::tuple<int, int> &dilation,
-                                const int &bias) {
+                                const double &bias) {
   int num_snps = data.size();
   int num_individuals = data.at(0).size();
   int k_row = weight.size();
@@ -17,7 +17,7 @@ torch::Tensor dense_convolution(const vector<vector<int>> &data,
       (num_snps - ((k_row - 1) * dilation_row + 1)) / stride_row + 1;
   int result_col_size =
       (num_individuals - ((k_col - 1) * dilation_col + 1)) / stride_col + 1;
-  vector<int> result(result_row_size * result_col_size, bias);
+  vector<double> result(result_row_size * result_col_size, bias);
   for (int i = 0; i < result_row_size; i++) {
     for (int j = 0; j < result_col_size; j++) {
       for (int a = 0; a < k_row; a++) {
@@ -31,32 +31,33 @@ torch::Tensor dense_convolution(const vector<vector<int>> &data,
   }
   torch::Tensor torch_result =
       torch::from_blob(result.data(), {result_row_size, result_col_size},
-                       torch::TensorOptions().dtype(torch::kInt32))
+                       torch::TensorOptions().dtype(torch::kFloat64))
+          .to(torch::kFloat32)
           .clone();
   return torch_result;
 }
 
 torch::Tensor dense_convolution(const vector<vector<int>> &data,
-                                const vector<vector<int>> &weight,
+                                const vector<vector<double>> &weight,
                                 const int &stride,
                                 const std::tuple<int, int> &dilation,
-                                const int &bias) {
+                                const double &bias) {
   return dense_convolution(data, weight, std::make_tuple(stride, stride),
                            dilation, bias);
 }
 
 torch::Tensor dense_convolution(const vector<vector<int>> &data,
-                                const vector<vector<int>> &weight,
+                                const vector<vector<double>> &weight,
                                 const std::tuple<int, int> &stride,
-                                const int &dilation, const int &bias) {
+                                const int &dilation, const double &bias) {
   return dense_convolution(data, weight, stride,
                            std::make_tuple(dilation, dilation), bias);
 }
 
 torch::Tensor dense_convolution(const vector<vector<int>> &data,
-                                const vector<vector<int>> &weight,
+                                const vector<vector<double>> &weight,
                                 const int &stride, const int &dilation,
-                                const int &bias) {
+                                const double &bias) {
   return dense_convolution(data, weight, std::make_tuple(stride, stride),
                            std::make_tuple(dilation, dilation), bias);
 }
