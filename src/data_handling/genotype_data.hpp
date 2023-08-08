@@ -1,3 +1,5 @@
+#ifndef GENOTYPE_DATA
+#define GENOTYPE_DATA
 #include <vector>
 
 using std::vector;
@@ -17,3 +19,5 @@ struct GenotypeData {
     this->hetero_snps = hetero_snps;
   }
 };
+
+#endif

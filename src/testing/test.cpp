@@ -134,15 +134,17 @@ torch::Tensor test_sparse_optimized(GenotypeData data,
                                     const std::tuple<int, int> &dilation) {
   int kernel_length = std::get<0>(kernel_size);
   int kernel_width = std::get<1>(kernel_size);
-  vector<vector<double>> weight(kernel_width, vector<double>(kernel_length, 2));
+  vector<vector<vector<vector<double>>>> weight(
+      1, vector<vector<vector<double>>>(
+             1, vector<vector<double>>(kernel_width,
+                                       vector<double>(kernel_length, 2))));
+  vector<vector<GenotypeData>> input(1, vector<GenotypeData>(1, data));
   auto start = steady_clock::now();
-  torch::Tensor result = sparse_convolution_input_based_optimized(
-      data.homo_snps, data.hetero_snps, data.num_snps, data.num_individuals,
-      weight, stride, dilation);
+  torch::Tensor result = sparse_convolution(input, weight, 0, stride, dilation);
   auto end = steady_clock::now();
   std::cout << "Time for Sparse Optimized: "
             << duration_cast<milliseconds>(end - start).count() << std::endl;
-  return result;
+  return result[0][0];
 }
 
 void test_same(const std::tuple<int, int> &kernel_size,
