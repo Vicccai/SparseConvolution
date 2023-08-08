@@ -6,14 +6,16 @@
 using std::vector;
 
 /**
- * @brief handles sparse convolution with batches and channels
+ * @brief Sparse convolution forward pass with support for minibatch and
+ * channels
  *
  * @param input (minibatch, in_channels, GenotypeData)
  * @param weight (out_channels, in_channels, width, height)
  * @param bias optional bias
  * @param stride
  * @param dilation
- * @return torch::Tensor
+ * @return torch::Tensor with shape (minibatch, out_channels, result_row_size,
+ * result_col_size)
  */
 torch::Tensor sparse_convolution(
     const vector<vector<GenotypeData>> &input,
@@ -42,8 +44,46 @@ sparse_convolution(const vector<vector<GenotypeData>> &input,
                    const int &dilation = 1);
 
 /**
+ * @brief Sparse convolution for the backward pass.
+ *
+ * @param input original input (mini_batch, in_channels, GenotypeData)
+ * @param grad_output (out_channels, result_rows, result_cols)
+ * @param stride original dilation from forward
+ * @param dilation original stride from forward
+ * @param result_rows original kernel_rows
+ * @param result_cols original kernel_cols
+ * @return torch::Tensor (out_channels, in_channels, kernel_rows, kernel_cols)
+ */
+torch::Tensor
+sparse_convolution_backward(const vector<vector<GenotypeData>> &input,
+                            const vector<vector<vector<double>>> &grad_output,
+                            const std::tuple<int, int> &stride,
+                            const std::tuple<int, int> &dilation,
+                            const int &result_rows, const int &result_cols);
+
+torch::Tensor
+sparse_convolution_backward(const vector<vector<GenotypeData>> &input,
+                            const vector<vector<vector<double>>> &grad_output,
+                            const int &stride,
+                            const std::tuple<int, int> &dilation,
+                            const int &result_rows, const int &result_cols);
+
+torch::Tensor
+sparse_convolution_backward(const vector<vector<GenotypeData>> &input,
+                            const vector<vector<vector<double>>> &grad_output,
+                            const std::tuple<int, int> &stride,
+                            const int &dilation, const int &result_rows,
+                            const int &result_cols);
+
+torch::Tensor
+sparse_convolution_backward(const vector<vector<GenotypeData>> &input,
+                            const vector<vector<vector<double>>> &grad_output,
+                            const int &stride, const int &dilation,
+                            const int &result_rows, const int &result_cols);
+
+/**
  * @brief Performs single convolution operation for one 2d input and one 2d
- * weight
+ * weight. colwise long vector, 2d weight, 1d result, colwise kernel
  *
  * @param homo_snps
  * @param hetero_snps
@@ -95,16 +135,6 @@ torch::Tensor sparse_convolution_input_based(
     const int &num_individuals, const vector<vector<int>> &weight,
     const int &stride = 1, const int &dilation = 1, const int &bias = 0,
     const std::tuple<int, int> &output_size = std::make_tuple(0, 0));
-
-int handle_element(const int &i, const int &j, const int &stride_row,
-                   const int &stride_col, const int &dilation_row,
-                   const int &dilation_col, const int &k_row, const int &k_col,
-                   vector<int> &starting_indices_homo,
-                   vector<int> &starting_indices_hetero,
-                   const vector<vector<int>> &homo_snps,
-                   const vector<vector<int>> &hetero_snps,
-                   const vector<vector<int>> &weight,
-                   const vector<vector<int>> &double_weight);
 
 /**
  * @brief Second version of sparse convolution. Iterates through each element of
