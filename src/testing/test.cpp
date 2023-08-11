@@ -139,8 +139,10 @@ torch::Tensor test_sparse_optimized(GenotypeData data,
              1, vector<vector<double>>(kernel_width,
                                        vector<double>(kernel_length, 2))));
   vector<vector<GenotypeData>> input(1, vector<GenotypeData>(1, data));
+  vector<double> bias(1, 0);
   auto start = steady_clock::now();
-  torch::Tensor result = sparse_convolution(input, weight, 0, stride, dilation);
+  torch::Tensor result =
+      sparse_convolution(input, weight, bias, stride, dilation);
   auto end = steady_clock::now();
   std::cout << "Time for Sparse Optimized: "
             << duration_cast<milliseconds>(end - start).count() << std::endl;

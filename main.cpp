@@ -1,7 +1,8 @@
-#include "src/testing/benchmark.hpp"
-// #include "src/testing/test.hpp"
+// #include "src/testing/benchmark.hpp"
+#include "src/testing/test.hpp"
 #include <chrono>
 #include <iostream>
+#include <string>
 #include <torch/torch.h>
 #include <vector>
 
