@@ -37,7 +37,6 @@ sparse_convolution(const vector<vector<GenotypeData>> &input,
             dilation_col, bias[j], result_row_size, result_col_size,
             kernel_rows, kernel_cols);
       }
-      result[i][j] /= in_channels;
     }
   }
   return result;
