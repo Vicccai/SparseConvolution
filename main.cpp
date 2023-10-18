@@ -1,5 +1,8 @@
 // #include "src/testing/benchmark.hpp"
-#include "src/testing/test.hpp"
+// #include "src/testing/test.hpp"
+#include "src/convolutions/sparse_convolution.hpp"
+#include "src/data_handling/file_input.hpp"
+// #include "src/data_handling/generate_data.hpp"
 #include <chrono>
 #include <iostream>
 #include <string>
@@ -73,14 +76,47 @@ void test_old() {
 }
 
 int main() {
+  int output_channels = 8;
+  fileinput::FileInput input = fileinput::FileInput();
+  GenotypeData sparse = input.TxtToSparseTensor("../data/data_trans_01.txt");
+  vector<vector<GenotypeData>> sparse_input(1, vector<GenotypeData>(1, sparse));
+  std::cout << sparse.num_individuals << " " << sparse.num_snps << std::endl;
+  vector<vector<vector<vector<double>>>> weight(
+      output_channels,
+      vector<vector<vector<double>>>(
+          1, vector<vector<double>>(2, vector<double>(20, 2))));
+  vector<double> bias(output_channels, 0);
+  auto start = steady_clock::now();
+  // torch::Tensor result = sparse_convolution(
+  //     sparse_input, weight, bias, std::make_tuple(1, 1), std::make_tuple(1,
+  //     1));
+  auto end = steady_clock::now();
+  // std::cout << result.sizes() << std::endl;
+  // std::cout << "Time for Sparse: "
+  //           << duration_cast<milliseconds>(end - start).count() << std::endl;
+
+  vector<int> block_sizes{32000};
+  for (int block_size : block_sizes) {
+    start = steady_clock::now();
+    torch::Tensor result_blocked = sparse_convolution_blocked(
+        sparse_input, weight, bias, std::make_tuple(1, 1),
+        std::make_tuple(1, 1), block_size);
+    end = steady_clock::now();
+    std::cout << result_blocked.sizes() << std::endl;
+    std::cout << "Time for Blocked Sparse " << block_size << ": "
+              << duration_cast<milliseconds>(end - start).count() << std::endl;
+    // std::cout << torch::equal(result, result_blocked) << std::endl;
+  }
+
   // benchmark::benchmark_general();
-  test_old();
-  test_new();
   // benchmark::benchmark_sparse();
   // torch::Tensor test = torch::ones({3, 4}).to(torch::kInt32);
   // std::vector<int> v(test.data_ptr<int>(), test.data_ptr<int>() +
   // test.numel()); std::cout << v << std::endl;
   // test::test_same(std::make_tuple(100, 2), 1, 1);
+  // test::test_optimized_sparse_same(
+  //     std::make_tuple(20, 2), std::make_tuple(1, 1), std::make_tuple(1,
+  //     1));
   // benchmark::benchmark_density();
   // test::test_stride_dilation(50);
   // test::test_same(1000, 5, 2);

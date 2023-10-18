@@ -24,6 +24,14 @@ torch::Tensor sparse_convolution(
     const std::tuple<int, int> &stride = std::make_tuple(1, 1),
     const std::tuple<int, int> &dilation = std::make_tuple(1, 1));
 
+torch::Tensor sparse_convolution_blocked(
+    const vector<vector<GenotypeData>> &input,
+    const vector<vector<vector<vector<double>>>> &weight,
+    const vector<double> &bias,
+    const std::tuple<int, int> &stride = std::make_tuple(1, 1),
+    const std::tuple<int, int> &dilation = std::make_tuple(1, 1),
+    const int &block_size = 1000);
+
 torch::Tensor
 sparse_convolution(const vector<vector<GenotypeData>> &input,
                    const vector<vector<vector<vector<double>>>> &weight,
@@ -99,6 +107,13 @@ torch::Tensor sparse_convolution_input_based_optimized(
     const int &dilation_col, const double &bias, const int &result_row_size,
     const int &result_col_size, const int &kernel_rows, const int &kernel_cols);
 
+torch::Tensor sparse_convolution_input_based_blocked(
+    const GenotypeData &input, const vector<vector<double>> &weight,
+    const int &stride_row, const int &stride_col, const int &dilation_row,
+    const int &dilation_col, const double &bias, const int &result_row_size,
+    const int &result_col_size, const int &kernel_rows, const int &kernel_cols,
+    const int &block_size);
+
 // colwise long vector, 2d weight, 1d result
 torch::Tensor sparse_convolution_input_based(
     const vector<vector<int>> &homo_snps,
@@ -133,50 +148,17 @@ torch::Tensor sparse_convolution_input_based(
     const int &stride = 1, const int &dilation = 1, const int &bias = 0,
     const std::tuple<int, int> &output_size = std::make_tuple(0, 0));
 
-/**
- * @brief Second version of sparse convolution. Iterates through each element of
- * the result only once. Better for longer filters.
- *
- * @param homo_snps
- * @param hetero_snps
- * @param num_snps
- * @param num_individuals
- * @param weight column-wise 2d vector
- * @param stride tuple of stride for (row, col)
- * @param dilation tuple of dilation for (row, col)
- * @param bias
- * @param output_size tuple of output size. Used for backpropagation
- * @return torch::Tensor
- */
-torch::Tensor sparse_convolution_result_based(
-    const vector<vector<int>> &homo_snps,
-    const vector<vector<int>> &hetero_snps, const int &num_snps,
-    const int &num_individuals, const vector<vector<int>> &weight,
-    const std::tuple<int, int> &stride = std::make_tuple(1, 1),
-    const std::tuple<int, int> &dilation = std::make_tuple(1, 1),
-    const int &bias = 0,
-    const std::tuple<int, int> &output_size = std::make_tuple(0, 0));
+torch::Tensor sparse_convolution_optimized(
+    const vector<vector<GenotypeData>> &input,
+    const vector<vector<vector<vector<double>>>> &weight,
+    const vector<double> &bias, const std::tuple<int, int> &stride,
+    const std::tuple<int, int> &dilation);
 
-torch::Tensor sparse_convolution_result_based(
-    const vector<vector<int>> &homo_snps,
-    const vector<vector<int>> &hetero_snps, const int &num_snps,
-    const int &num_individuals, const vector<vector<int>> &weight,
-    const std::tuple<int, int> &stride = std::make_tuple(1, 1),
-    const int &dilation = 1, const int &bias = 0,
-    const std::tuple<int, int> &output_size = std::make_tuple(0, 0));
-
-torch::Tensor sparse_convolution_result_based(
-    const vector<vector<int>> &homo_snps,
-    const vector<vector<int>> &hetero_snps, const int &num_snps,
-    const int &num_individuals, const vector<vector<int>> &weight,
-    const int &stride = 1,
-    const std::tuple<int, int> &dilation = std::make_tuple(1, 1),
-    const int &bias = 0,
-    const std::tuple<int, int> &output_size = std::make_tuple(0, 0));
-
-torch::Tensor sparse_convolution_result_based(
-    const vector<vector<int>> &homo_snps,
-    const vector<vector<int>> &hetero_snps, const int &num_snps,
-    const int &num_individuals, const vector<vector<int>> &weight,
-    const int &stride = 1, const int &dilation = 1, const int &bias = 0,
-    const std::tuple<int, int> &output_size = std::make_tuple(0, 0));
+void handle_element(
+    const int &batch, const int &in_channel, const int &i, const int &j,
+    const int &kernel_rows, const int &kernel_cols, const int &stride_row,
+    const int &stride_col, const int &dilation_row, const int &dilation_col,
+    const int &num_snps, const int &num_individuals, const int &result_row_size,
+    const int &result_col_size, const int &result_size, const int &out_channels,
+    const vector<vector<vector<vector<double>>>> &weight,
+    vector<double> &result, const int &starting_point, const int &j_in_bounds);

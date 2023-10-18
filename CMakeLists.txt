@@ -13,7 +13,8 @@ src/testing/benchmark.cpp
 src/testing/test.cpp
 src/convolutions/dense_convolution.cpp
 src/convolutions/sparse_convolution.cpp
-src/convolutions/general_sparse.cpp)
+src/convolutions/general_sparse.cpp
+src/data_handling/generate_data.cpp)
 target_link_libraries(SparseConvolution "${TORCH_LIBRARIES}")
 set_property(TARGET SparseConvolution PROPERTY CXX_STANDARD 17)
 

@@ -37,11 +37,6 @@ torch::Tensor test_general_sparse(GeneralData data,
                                   const std::tuple<int, int> &stride,
                                   const std::tuple<int, int> &dilation);
 
-torch::Tensor test_sparse_result_based(GenotypeData data,
-                                       const std::tuple<int, int> &kernel_size,
-                                       const std::tuple<int, int> &stride,
-                                       const std::tuple<int, int> &dilation);
-
 torch::Tensor test_sparse_optimized(GenotypeData data,
                                     const std::tuple<int, int> &kernel_size,
                                     const std::tuple<int, int> &stride,
