@@ -221,6 +221,59 @@ void handle_row_1d_result_colwise_kernel(
   }
 }
 
+void handle_row_1d_result_colwise_kernel_optimized(
+    const int &i, const int &j, const int &kernel_rows, const int &kernel_cols,
+    const int &stride_row, const int &stride_col, const int &dilation_row,
+    const int &dilation_col, const int &num_snps, const int &num_individuals,
+    const int &result_row_size, const int &result_col_size,
+    const vector<vector<double>> &weight, vector<double> &result) {
+  int c_start =
+      j - j / stride_col * stride_col; // the first index in the kernel
+  int r_start = i - i / stride_row * stride_row;
+  // how many strides left in the kernel vs number of strides still in bounds
+  // (top left boundary)
+  int col_strides_to_end =
+      std::min((kernel_cols - 1 - c_start), j) / stride_col;
+  int row_strides_to_end =
+      std::min((kernel_rows - 1 - r_start), i) / stride_row;
+  int c_end = c_start + col_strides_to_end * stride_col;
+  int r_end = r_start + row_strides_to_end * stride_row;
+  int result_col =
+      (j - c_end) / stride_col; // map index of input and kernel to result
+  int result_row = (i - r_end) / stride_row;
+  int result_index = result_col * result_row_size + result_row;
+  int og_result_row = result_row;
+  for (int c = c_end; c >= 0; c -= stride_col) {
+    if (result_col >= result_col_size)
+      break;
+    if (c % dilation_col != 0) {
+      result_col++;
+      result_index += result_row_size;
+      continue;
+    }
+    int col_index = c / dilation_col;
+    int og_result_index = result_index;
+    for (int r = r_end; r >= 0; r -= stride_row) {
+      if (result_row >= result_row_size) {
+        break;
+      }
+      if (r % dilation_row != 0) {
+        result_row++;
+        result_index++;
+        continue;
+      }
+      int row_index = r / dilation_row;
+      result[result_index] += weight[col_index][row_index];
+      result_row++;
+      result_index++;
+    }
+    result_row = og_result_row;
+    result_index = og_result_index;
+    result_col++;
+    result_index += result_row_size;
+  }
+}
+
 torch::Tensor sparse_convolution_input_based_optimized(
     const GenotypeData &input, const vector<vector<double>> &weight,
     const int &stride_row, const int &stride_col, const int &dilation_row,
@@ -306,54 +359,32 @@ torch::Tensor sparse_convolution_input_based_blocked(
       dilation_col > 1 && stride_col > 1 &&
       (stride_col % dilation_col == 0 || dilation_col % stride_col == 0);
   vector<double> result(result_col_size * result_row_size, bias);
-  // try blocking
-  vector<int> curr_homo_inds(num_individuals, 0);
-  vector<int> curr_hetero_inds(num_individuals, 0);
-  for (int cutoff = block_size; cutoff < num_snps + block_size;
-       cutoff += block_size) {
-    for (int j = 0; j < num_individuals; j++) {
-      if (stride_dilation_check_col &&
-          j % std::min(dilation_col, stride_col) != 0) {
+  for (int j = 0; j < num_individuals; j++) {
+    if (stride_dilation_check_col &&
+        j % std::min(dilation_col, stride_col) != 0) {
+      continue;
+    }
+    for (int i : homo_snps.at(j)) {
+      if (stride_dilation_check_row &&
+          i % std::min(dilation_row, stride_row) != 0) {
         continue;
       }
-      vector<int> homo_col = homo_snps.at(j);
-      int homo_len = homo_col.size();
-      int curr_homo_ind = curr_homo_inds[j];
-      int i = homo_col[curr_homo_ind];
-      while (curr_homo_ind < homo_len and i < cutoff) {
-        if (stride_dilation_check_row &&
-            i % std::min(dilation_row, stride_row) != 0) {
-          continue;
-        }
-        handle_row_1d_result_colwise_kernel(
-            i, j, kernel_rows, kernel_cols, stride_row, stride_col,
-            dilation_row, dilation_col, num_snps, num_individuals,
-            result_row_size, result_col_size, double_weight, result);
-        curr_homo_ind++;
-        i = homo_col[curr_homo_ind];
+      handle_row_1d_result_colwise_kernel_optimized(
+          i, j, kernel_rows, kernel_cols, stride_row, stride_col, dilation_row,
+          dilation_col, num_snps, num_individuals, result_row_size,
+          result_col_size, double_weight, result);
+    }
+    for (int i : hetero_snps.at(j)) {
+      if (stride_dilation_check_row &&
+          i % std::min(dilation_row, stride_row) != 0) {
+        continue;
       }
-      curr_homo_inds[j] = curr_homo_ind;
-
-      vector<int> hetero_col = hetero_snps.at(j);
-      int hetero_len = hetero_col.size();
-      int curr_hetero_ind = curr_hetero_inds[j];
-      i = hetero_col[curr_hetero_ind];
-      while (curr_hetero_ind < hetero_len and i < cutoff) {
-        if (stride_dilation_check_row &&
-            i % std::min(dilation_row, stride_row) != 0) {
-          continue;
-        }
-        handle_row_1d_result_colwise_kernel(
-            i, j, kernel_rows, kernel_cols, stride_row, stride_col,
-            dilation_row, dilation_col, num_snps, num_individuals,
-            result_row_size, result_col_size, weight, result);
-        curr_hetero_ind++;
-        i = hetero_col[curr_hetero_ind];
-      }
-      curr_hetero_inds[j] = curr_hetero_ind;
+      handle_row_1d_result_colwise_kernel_optimized(
+          i, j, kernel_rows, kernel_cols, stride_row, stride_col, dilation_row,
+          dilation_col, num_snps, num_individuals, result_row_size,
+          result_col_size, weight, result);
     }
   }
-
   torch::Tensor torch_result =
       torch::from_blob(result.data(), {result_col_size, result_row_size},
                        torch::TensorOptions().dtype(torch::kFloat64))
@@ -362,6 +393,89 @@ torch::Tensor sparse_convolution_input_based_blocked(
           .transpose(0, 1);
   return torch_result;
 }
+
+// torch::Tensor sparse_convolution_input_based_blocked(
+//     const GenotypeData &input, const vector<vector<double>> &weight,
+//     const int &stride_row, const int &stride_col, const int &dilation_row,
+//     const int &dilation_col, const double &bias, const int &result_row_size,
+//     const int &result_col_size, const int &kernel_rows, const int
+//     &kernel_cols, const int &block_size) {
+//   int num_snps = input.num_snps;
+//   int num_individuals = input.num_individuals;
+//   vector<vector<int>> homo_snps = input.homo_snps;
+//   vector<vector<int>> hetero_snps = input.hetero_snps;
+//   int k_col = weight.size();
+//   int k_row = weight.at(0).size();
+//   vector<vector<double>> double_weight(k_col, vector<double>(k_row, 0));
+//   for (int i = 0; i < k_col; i++) {
+//     for (int j = 0; j < k_row; j++) {
+//       double_weight[i][j] = weight[i][j] * 2;
+//     }
+//   }
+//   bool stride_dilation_check_row =
+//       dilation_row > 1 && stride_row > 1 &&
+//       (stride_row % dilation_row == 0 || dilation_row % stride_row == 0);
+//   bool stride_dilation_check_col =
+//       dilation_col > 1 && stride_col > 1 &&
+//       (stride_col % dilation_col == 0 || dilation_col % stride_col == 0);
+//   vector<double> result(result_col_size * result_row_size, bias);
+//   // try blocking
+//   vector<int> curr_homo_inds(num_individuals, 0);
+//   vector<int> curr_hetero_inds(num_individuals, 0);
+// #pragma omp parallel for
+//   for (int cutoff = block_size; cutoff < num_snps + block_size;
+//        cutoff += block_size) {
+//     for (int j = 0; j < num_individuals; j++) {
+//       if (stride_dilation_check_col &&
+//           j % std::min(dilation_col, stride_col) != 0) {
+//         continue;
+//       }
+//       vector<int> homo_col = homo_snps.at(j);
+//       int homo_len = homo_col.size();
+//       int curr_homo_ind = curr_homo_inds[j];
+//       int i = homo_col[curr_homo_ind];
+//       while (curr_homo_ind < homo_len and i < cutoff) {
+//         if (stride_dilation_check_row &&
+//             i % std::min(dilation_row, stride_row) != 0) {
+//           continue;
+//         }
+//         handle_row_1d_result_colwise_kernel(
+//             i, j, kernel_rows, kernel_cols, stride_row, stride_col,
+//             dilation_row, dilation_col, num_snps, num_individuals,
+//             result_row_size, result_col_size, double_weight, result);
+//         curr_homo_ind++;
+//         i = homo_col[curr_homo_ind];
+//       }
+//       curr_homo_inds[j] = curr_homo_ind;
+
+//       vector<int> hetero_col = hetero_snps.at(j);
+//       int hetero_len = hetero_col.size();
+//       int curr_hetero_ind = curr_hetero_inds[j];
+//       i = hetero_col[curr_hetero_ind];
+//       while (curr_hetero_ind < hetero_len and i < cutoff) {
+//         if (stride_dilation_check_row &&
+//             i % std::min(dilation_row, stride_row) != 0) {
+//           continue;
+//         }
+//         handle_row_1d_result_colwise_kernel(
+//             i, j, kernel_rows, kernel_cols, stride_row, stride_col,
+//             dilation_row, dilation_col, num_snps, num_individuals,
+//             result_row_size, result_col_size, weight, result);
+//         curr_hetero_ind++;
+//         i = hetero_col[curr_hetero_ind];
+//       }
+//       curr_hetero_inds[j] = curr_hetero_ind;
+//     }
+//   }
+
+//   torch::Tensor torch_result =
+//       torch::from_blob(result.data(), {result_col_size, result_row_size},
+//                        torch::TensorOptions().dtype(torch::kFloat64))
+//           .to(torch::kFloat32)
+//           .clone()
+//           .transpose(0, 1);
+//   return torch_result;
+// }
 
 void handle_row_1d_result_colwise(
     const int &i, const int &j, const int &kernel_rows, const int &kernel_cols,

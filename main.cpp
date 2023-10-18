@@ -76,7 +76,7 @@ void test_old() {
 }
 
 int main() {
-  int output_channels = 8;
+  int output_channels = 1;
   fileinput::FileInput input = fileinput::FileInput();
   GenotypeData sparse = input.TxtToSparseTensor("../data/data_trans_01.txt");
   vector<vector<GenotypeData>> sparse_input(1, vector<GenotypeData>(1, sparse));
@@ -86,27 +86,27 @@ int main() {
       vector<vector<vector<double>>>(
           1, vector<vector<double>>(2, vector<double>(20, 2))));
   vector<double> bias(output_channels, 0);
-  auto start = steady_clock::now();
-  // torch::Tensor result = sparse_convolution(
-  //     sparse_input, weight, bias, std::make_tuple(1, 1), std::make_tuple(1,
-  //     1));
-  auto end = steady_clock::now();
-  // std::cout << result.sizes() << std::endl;
-  // std::cout << "Time for Sparse: "
-  //           << duration_cast<milliseconds>(end - start).count() << std::endl;
 
-  vector<int> block_sizes{32000};
-  for (int block_size : block_sizes) {
-    start = steady_clock::now();
-    torch::Tensor result_blocked = sparse_convolution_blocked(
-        sparse_input, weight, bias, std::make_tuple(1, 1),
-        std::make_tuple(1, 1), block_size);
-    end = steady_clock::now();
-    std::cout << result_blocked.sizes() << std::endl;
-    std::cout << "Time for Blocked Sparse " << block_size << ": "
-              << duration_cast<milliseconds>(end - start).count() << std::endl;
-    // std::cout << torch::equal(result, result_blocked) << std::endl;
-  }
+  // vector<int> block_sizes{8000};
+  auto start = steady_clock::now();
+  torch::Tensor result_blocked = sparse_convolution_blocked(
+      sparse_input, weight, bias, std::make_tuple(1, 1), std::make_tuple(1, 1),
+      0);
+  auto end = steady_clock::now();
+  std::cout << result_blocked.sizes() << std::endl;
+  std::cout << "Time for Blocked Sparse: "
+            << duration_cast<milliseconds>(end - start).count() << std::endl;
+  // std::cout << result[0][0][0][0] << std::endl;
+  // std::cout << result_blocked[0][0][0][0] << std::endl;
+
+  start = steady_clock::now();
+  torch::Tensor result = sparse_convolution(
+      sparse_input, weight, bias, std::make_tuple(1, 1), std::make_tuple(1, 1));
+  end = steady_clock::now();
+  std::cout << result.sizes() << std::endl;
+  std::cout << "Time for Sparse: "
+            << duration_cast<milliseconds>(end - start).count() << std::endl;
+  std::cout << torch::equal(result, result_blocked) << std::endl;
 
   // benchmark::benchmark_general();
   // benchmark::benchmark_sparse();
